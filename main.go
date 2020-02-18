@@ -12,6 +12,8 @@ import (
 )
 
 func main() {
+	parseCommands()
+
 	signer := getSigner(fmt.Sprintf("%s/.ssh/linux_rsa", findUserHome()))
 
 	// Set up regular ssh config
