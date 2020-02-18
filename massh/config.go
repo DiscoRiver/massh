@@ -37,8 +37,8 @@ func (c *Config) SetWorkerPool(w int) {
 	c.WorkerPool = w
 }
 
-func (c *Config) Run() {
-	run(c)
+func (c *Config) Run() []Result {
+	return run(c)
 }
 
 func (j *Job) SetCommands(c string) {
@@ -55,6 +55,8 @@ func (j *Job) SetLocalScript(s string, args string) error {
 	j.scriptArgs = args
 	return nil
 }
+
+
 
 
 

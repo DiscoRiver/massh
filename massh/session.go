@@ -53,7 +53,7 @@ func worker(hosts <- chan string, results chan<- Result, job *Job, sshConf *ssh.
 	}
 }
 
-func run(c *Config) {
+func run(c *Config) (res []Result) {
 	hosts := make(chan string, len(c.Hosts))
 	results := make(chan Result, len(c.Hosts))
 
@@ -66,9 +66,8 @@ func run(c *Config) {
 	}
 	close(hosts)
 
-	var res []Result
 	for r := 0; r < len(c.Hosts); r++ {
 		res = append(res, <-results)
 	}
-	fmt.Print(res)
+	return res
 }

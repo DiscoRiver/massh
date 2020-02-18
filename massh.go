@@ -12,17 +12,9 @@ import (
 )
 
 func main() {
-	key, err := ioutil.ReadFile(fmt.Sprintf("%s/.ssh/linux_rsa", findUserHome()))
-	if err != nil {
-		log.Fatalf("unable to read private key: %v", err)
-	}
+	signer := getSigner(fmt.Sprintf("%s/.ssh/linux_rsa", findUserHome()))
 
-	// Create the Signer for this private key.
-	signer, err := ssh.ParsePrivateKey(key)
-	if err != nil {
-		log.Fatalf("unable to parse private key: %v", err)
-	}
-
+	// Set up regular ssh config
 	config := &ssh.ClientConfig{
 		User: "u01",
 		Auth: []ssh.AuthMethod{
@@ -32,6 +24,7 @@ func main() {
 		Timeout: 10 * time.Second,
 	}
 
+	// Set up massh config
 	myconfig := &massh.Config{
 		Hosts: []string{"172.16.226.25", "172.16.226.26"},
 		SSHConfig: config,
@@ -39,13 +32,27 @@ func main() {
 		WorkerPool: 2,
 	}
 
-	err = myconfig.Job.SetLocalScript("test.sh", "")
+	err := myconfig.Job.SetLocalScript("test.sh", "")
 	if err != nil {
 		fmt.Println(err)
 	}
-	myconfig.Run()
+	fmt.Print(myconfig.Run())
 }
 
+func getSigner(s string) ssh.Signer {
+	// read private key file
+	key, err := ioutil.ReadFile(s)
+	if err != nil {
+		log.Fatalf("unable to read private key: %v", err)
+	}
+
+	// Create the Signer for this private key.
+	signer, err := ssh.ParsePrivateKey(key)
+	if err != nil {
+		log.Fatalf("unable to parse private key: %v", err)
+	}
+	return signer
+}
 func findUserHome() string {
 	usr, err := user.Current()
 	if err != nil {
