@@ -1,4 +1,4 @@
-package main
+package massh
 
 import (
 	"fmt"
@@ -16,8 +16,9 @@ type Config struct {
 
 // Job is the remote task config. For script files, use Job.SetLocalScript().
 type Job struct {
-	Commands []string
+	Command string
 	script []byte // Unexported because we should handle retrieving the file contents.
+	scriptArgs string
 }
 
 func (c *Config) SetHosts(h []string){
@@ -40,17 +41,18 @@ func (c *Config) Run() {
 	run(c)
 }
 
-func (j *Job) SetCommands(c []string) {
-	j.Commands = c
+func (j *Job) SetCommands(c string) {
+	j.Command = c
 }
 
 // SetLocalScript reads a script file contents into the Job config.
-func (j *Job) SetLocalScript(s string) error {
+func (j *Job) SetLocalScript(s string, args string) error {
 	var err error
 	j.script, err = ioutil.ReadFile(s)
 	if err != nil {
-		return fmt.Errorf("failed to open script file")
+		return fmt.Errorf("failed to read script file")
 	}
+	j.scriptArgs = args
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"log"
+	"massh/massh"
 	"os"
 	"os/user"
 	"time"
@@ -31,17 +32,18 @@ func main() {
 		Timeout: 10 * time.Second,
 	}
 
-	myconfig := &Config{
-		Hosts: []string{"host1", "host2"},
+	myconfig := &massh.Config{
+		Hosts: []string{"172.16.226.25", "172.16.226.26"},
 		SSHConfig: config,
-		Job: &Job{
-			Commands: []string{"/usr/bin/whoami"},
-		},
+		Job: &massh.Job{},
+		WorkerPool: 2,
 	}
 
+	err = myconfig.Job.SetLocalScript("test.sh", "")
+	if err != nil {
+		fmt.Println(err)
+	}
 	myconfig.Run()
-
-
 }
 
 func findUserHome() string {
