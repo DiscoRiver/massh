@@ -1,4 +1,4 @@
-![logo](./doc/logo.jpeg)
+![logo](./doc/logo.jpg)
 
 Description: Go package for distributed shell commands via SSH
 
