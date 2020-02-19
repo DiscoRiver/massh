@@ -3,42 +3,85 @@ package main
 import (
 	"fmt"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/terminal"
 	"io/ioutil"
 	"log"
 	"massh/massh"
 	"os"
 	"os/user"
+	"syscall"
 	"time"
 )
 
+/*
+Right now everything here is designed as a proof of concept. Things in main need to be worked out,
+but for now simply proving that the massh package is behaving as expected is enough.
+ */
 func main() {
 	parseCommands()
 
-	signer := getSigner(fmt.Sprintf("%s/.ssh/linux_rsa", findUserHome()))
+	mConfig := masshConfigBuilder()
 
+	fmt.Print(mConfig.Run())
+}
+
+func readPassword(prompt string) ssh.AuthMethod {
+	fmt.Fprint(os.Stderr, prompt)
+	var fd int
+	if terminal.IsTerminal(syscall.Stdin) {
+		fd = syscall.Stdin
+	} else {
+		tty, err := os.Open("/dev/tty")
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		defer tty.Close()
+		fd = int(tty.Fd())
+	}
+	bytePassword, err := terminal.ReadPassword(fd)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Fprintln(os.Stderr)
+	return ssh.Password(string(bytePassword))
+}
+
+func masshConfigBuilder() *massh.Config {
 	// Set up regular ssh config
 	config := &ssh.ClientConfig{
-		User: "u01",
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
-		},
+		User: command.User,
+		Auth: []ssh.AuthMethod{},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout: 10 * time.Second,
+		Timeout: time.Duration(command.Timeout) * time.Second,
+	}
+
+	var signer ssh.Signer
+	if command.PublicKey != "" {
+		signer = getSigner(command.PublicKey)
+		config.Auth = append(config.Auth, ssh.PublicKeys(signer))
+	} else {
+		config.Auth = append(config.Auth, readPassword("Enter SSH Password: "))
 	}
 
 	// Set up massh config
 	myconfig := &massh.Config{
-		Hosts: []string{"172.16.226.25", "172.16.226.26"},
+		Hosts: command.Hosts,
 		SSHConfig: config,
 		Job: &massh.Job{},
-		WorkerPool: 2,
+		WorkerPool: command.WorkerPool,
 	}
 
-	err := myconfig.Job.SetLocalScript("test.sh", "")
-	if err != nil {
-		fmt.Println(err)
+	if command.Script != "" {
+		err := myconfig.Job.SetLocalScript(command.Script, command.ScriptArgs)
+		if err != nil {
+			fmt.Println(err)
+		}
+	} else {
+		myconfig.Job.SetCommand(command.Command)
 	}
-	fmt.Print(myconfig.Run())
+	return myconfig
 }
 
 func getSigner(s string) ssh.Signer {
@@ -55,6 +98,7 @@ func getSigner(s string) ssh.Signer {
 	}
 	return signer
 }
+
 func findUserHome() string {
 	usr, err := user.Current()
 	if err != nil {

@@ -21,6 +21,7 @@ type Job struct {
 	scriptArgs string
 }
 
+// SetHosts adds a slice of strings as hosts to config
 func (c *Config) SetHosts(h []string){
 	c.Hosts = h
 }
@@ -33,15 +34,17 @@ func (c *Config) SetJob(j *Job) {
 	c.Job = j
 }
 
+// SetWorkerPool populates specified number of concurrent workers in Config.
 func (c *Config) SetWorkerPool(w int) {
 	c.WorkerPool = w
 }
 
+// Run executes the config, return a slice of Results.
 func (c *Config) Run() []Result {
 	return run(c)
 }
 
-func (j *Job) SetCommands(c string) {
+func (j *Job) SetCommand(c string) {
 	j.Command = c
 }
 

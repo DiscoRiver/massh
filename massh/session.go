@@ -13,16 +13,17 @@ type Result struct {
 	Output string
 }
 
-func getScript(s *ssh.Session, j *Job) string {
+func getJob(s *ssh.Session, j *Job) string {
 	// Set up remote script
 	if j.script != nil {
 		s.Stdin = bytes.NewReader(j.script)
 		return "cat > outfile.sh && chmod +x ./outfile.sh && ./outfile.sh"
 	} else {
 		return j.Command
-
 	}
 }
+
+// sshCommand creates ssh.Session and run the specified job.
 func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", host, "22"), sshConf)
 	if err != nil {
@@ -36,7 +37,7 @@ func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 	}
 	defer session.Close()
 
-	job := getScript(session, j)
+	job := getJob(session, j)
 
 	// run the job
 	var b bytes.Buffer
@@ -47,22 +48,26 @@ func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 	return Result{host, job, b.String()}
 }
 
+// worker invokes sshCommand for each host in the channel
 func worker(hosts <- chan string, results chan<- Result, job *Job, sshConf *ssh.ClientConfig) {
 	for host := range hosts {
 		results <- sshCommand(host, job, sshConf)
 	}
 }
 
+// run sets up goroutines, worker pool, and returns the command results.
 func run(c *Config) (res []Result) {
+	// Channels length is always how many hosts we have
 	hosts := make(chan string, len(c.Hosts))
 	results := make(chan Result, len(c.Hosts))
 
+	// Set up a basic worker pool.
 	for i := 0; i < c.WorkerPool; i++ {
 		go worker(hosts, results, c.Job, c.SSHConfig)
 	}
 
 	for j := 0; j < len(c.Hosts); j++ {
-		hosts <- c.Hosts[j]
+		hosts <- c.Hosts[j] // send each host to the channel
 	}
 	close(hosts)
 

@@ -1,6 +1,6 @@
 ![logo](./doc/logo.jpg)
 
-Description: Go package for distributed shell commands via SSH
+Distributed shell commands via SSH
 
 ### Usage:
 
