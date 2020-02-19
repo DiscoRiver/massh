@@ -16,6 +16,8 @@ import (
 /*
 Right now everything here is designed as a proof of concept. Things in main need to be worked out,
 but for now simply proving that the massh package is behaving as expected is enough.
+
+TODO: Look at what needs to be handled by the massh package that is currently in main.
  */
 func main() {
 	parseCommands()
