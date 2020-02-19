@@ -17,7 +17,7 @@ func getJob(s *ssh.Session, j *Job) string {
 	// Set up remote script
 	if j.script != nil {
 		s.Stdin = bytes.NewReader(j.script)
-		return "cat > outfile.sh && chmod +x ./outfile.sh && ./outfile.sh"
+		return "cat > outfile.sh && chmod +x ./outfile.sh && ./outfile.sh && rm ./outfile.sh"
 	} else {
 		return j.Command
 	}
