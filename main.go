@@ -6,7 +6,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 	"io/ioutil"
 	"log"
-	"massh/massh"
+	"github.com/discoriver/massh/massh"
 	"os"
 	"os/user"
 	"syscall"
