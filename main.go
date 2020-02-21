@@ -63,14 +63,11 @@ func masshConfigBuilder() *massh.Config {
 		WorkerPool: command.WorkerPool,
 	}
 
-	var signer ssh.Signer
 	if command.PublicKey != "" {
-		signer = getSigner(command.PublicKey)
-		config.SSHConfig.Auth = append(config.SSHConfig.Auth, ssh.PublicKeys(signer))
+		config.SetKeySignature(command.PublicKey)
 	} else {
 		config.SSHConfig.Auth = append(config.SSHConfig.Auth, readPassword("Enter SSH Password: "))
 	}
-
 
 	if command.Script != "" {
 		err := config.Job.SetLocalScript(command.Script, command.ScriptArgs)
