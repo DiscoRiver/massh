@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
-	"log"
 )
 
 // Config is a config implementation for distributed SSH commands
@@ -46,25 +45,35 @@ func (c *Config) Run() []Result {
 }
 
 // SetKeySignature takes the file provided, reads it, and adds the key signature to the config.
-func (c *Config) SetKeySignature(file string) {
+func (c *Config) SetPublicKeyAuth(file string) error {
 	// read private key file
 	key, err := ioutil.ReadFile(file)
 	if err != nil {
-		log.Fatalf("unable to read private key: %v", err)
+		return fmt.Errorf("unable to read public key file: %s", err)
 	}
 
 	// Create the Signer for this private key.
 	signer, err := ssh.ParsePrivateKey(key)
 	if err != nil {
-		log.Fatalf("unable to parse private key: %v", err)
+		return fmt.Errorf("unable to parse public key: %s", err)
 	}
+
 	c.SSHConfig.Auth = []ssh.AuthMethod{
 		ssh.PublicKeys(signer),
 	}
+	return nil
 }
 
 func (j *Job) SetCommand(c string) {
 	j.Command = c
+}
+
+// SetPasswordAuth sets ssh password from provided byte slice (read from terminal)
+func (c *Config) SetPasswordAuth(bytePassword []byte) error {
+	c.SSHConfig.Auth = []ssh.AuthMethod{
+		ssh.Password(string(bytePassword)),
+	}
+	return nil
 }
 
 // SetLocalScript reads a script file contents into the Job config.
@@ -75,6 +84,7 @@ func (j *Job) SetLocalScript(s string, args string) error {
 		return fmt.Errorf("failed to read script file")
 	}
 	j.scriptArgs = args
+
 	return nil
 }
 

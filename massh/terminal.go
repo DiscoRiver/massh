@@ -2,13 +2,13 @@ package massh
 
 import (
 	"fmt"
-	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 	"os"
 	"syscall"
 )
 
-func readPassword(prompt string) (ssh.AuthMethod, error) {
+// ReadPassword prompts user for their password, with the provided prompt string.
+func ReadPassword(prompt string) ([]byte, error) {
 	fmt.Fprint(os.Stderr, prompt)
 	var fd int
 	if terminal.IsTerminal(syscall.Stdin) {
@@ -16,7 +16,7 @@ func readPassword(prompt string) (ssh.AuthMethod, error) {
 	} else {
 		tty, err := os.Open("/dev/tty")
 		if err != nil {
-			return nil, fmt.Errorf("Failed to open '/dev/tty': %s", err)
+			return nil, fmt.Errorf("Failed to open terminal: %s", err)
 		}
 		defer tty.Close()
 		fd = int(tty.Fd())
@@ -26,6 +26,6 @@ func readPassword(prompt string) (ssh.AuthMethod, error) {
 		return nil, fmt.Errorf("Failed to read password: %s", err)
 	}
 	fmt.Fprintln(os.Stderr)
-	return ssh.Password(string(bytePassword)), nil
+	return bytePassword, nil
 }
 
