@@ -1,13 +1,50 @@
 ![logo](./doc/logo.jpg)
 
-Distributed shell commands via SSH
+### Description
+Massh provides a method for running distributed commands, via SSH, to any number of hosts, concurrently.
 
-### Notes:
-Please note that all of the behaviour below is subject to change. Development of this program is still very much in progress. 
+### Why?
+I wanted to experiment with distributed SSH commands, and provide a functional replacement for the old, 
+stale [omnissh](https://github.com/rykugur/omnissh) repository.
 
-The commands being run should be simple, or have basic output. The primary purpose is for identifying inconsistencies in 
-command output, for environments that should have consistency.
+### Example:
 
+```
+package main
+
+import "github.com/discoriver/massh/massh"
+
+func main() {
+	// Create pointers to config & job
+	config := &massh.Config{}
+	job := &massh.Job{
+		Command: "echo hello world",
+	}
+	
+	config.SetHosts([]string{"host1", "host2"})
+	
+	err := config.SetPublicKeyAuth("~/.ssh/id_rsa")
+	if err != nil {
+		panic(err)
+	}
+	
+	config.SetJob(job)
+	config.SetWorkerPool(2)
+	
+	config.Run()
+}
+```
+
+### Usage:
+Get the massh package;
+
+```go get github.com/DiscoRiver/massh/massh```
+
+### Documentation
+
+* [GoDoc](https://godoc.org/github.com/DiscoRiver/massh/massh)
+
+### Notes
 Right now you can either user this repo as-is, which provides simple usage, or you can import the massh
 package and use your own behaviour for building and running the Config.
 
@@ -19,35 +56,4 @@ When specifying a script, it's contents will be added to stdin, and then the fol
 executed to run it on the remote machine;
 
 ```cat > outfile.sh && chmod +x ./outfile.sh && ./outfile.sh && rm ./outfile.sh```
-
-A more elegant solution is probably necessary, but this seems to be the most performative. The ability to 
-control the temp file would probably be enough, but more research is necessary. 
-
-### Usage:
-
-```
-Usage of ./massh:
-  -a string
-    	Arguments for script
-  -c string
-    	Set remote command to run.
-  -insecure
-    	Set insecure key mode.
-  -p string
-    	Public key file.
-  -s string
-    	Path to script file. Overrides -c switch.
-  -t int
-    	Timeout for ssh. (default 10)
-  -u string
-    	Specify user for ssh.
-  -w int
-    	Specify amount of concurrent workers. (default 5)
-```
-
-### Documentation
-
-* [GoDoc](https://godoc.org/github.com/DiscoRiver/massh/massh)
-
-
 
