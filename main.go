@@ -51,39 +51,36 @@ func readPassword(prompt string) ssh.AuthMethod {
 }
 
 func masshConfigBuilder() *massh.Config {
-	// Set up regular ssh config
-	config := &ssh.ClientConfig{
-		User: command.User,
-		Auth: []ssh.AuthMethod{},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout: time.Duration(command.Timeout) * time.Second,
+	config := &massh.Config{
+		Hosts: command.Hosts,
+		SSHConfig: &ssh.ClientConfig{
+			User: command.User,
+			Auth: []ssh.AuthMethod{},
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			Timeout: time.Duration(command.Timeout) * time.Second,
+		},
+		Job: &massh.Job{},
+		WorkerPool: command.WorkerPool,
 	}
 
 	var signer ssh.Signer
 	if command.PublicKey != "" {
 		signer = getSigner(command.PublicKey)
-		config.Auth = append(config.Auth, ssh.PublicKeys(signer))
+		config.SSHConfig.Auth = append(config.SSHConfig.Auth, ssh.PublicKeys(signer))
 	} else {
-		config.Auth = append(config.Auth, readPassword("Enter SSH Password: "))
+		config.SSHConfig.Auth = append(config.SSHConfig.Auth, readPassword("Enter SSH Password: "))
 	}
 
-	// Set up massh config
-	myconfig := &massh.Config{
-		Hosts: command.Hosts,
-		SSHConfig: config,
-		Job: &massh.Job{},
-		WorkerPool: command.WorkerPool,
-	}
 
 	if command.Script != "" {
-		err := myconfig.Job.SetLocalScript(command.Script, command.ScriptArgs)
+		err := config.Job.SetLocalScript(command.Script, command.ScriptArgs)
 		if err != nil {
 			fmt.Println(err)
 		}
 	} else {
-		myconfig.Job.SetCommand(command.Command)
+		config.Job.SetCommand(command.Command)
 	}
-	return myconfig
+	return config
 }
 
 func getSigner(s string) ssh.Signer {
