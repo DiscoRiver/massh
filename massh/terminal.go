@@ -26,6 +26,7 @@ func ReadPassword(prompt string) ([]byte, error) {
 		return nil, fmt.Errorf("Failed to read password: %s", err)
 	}
 	fmt.Fprintln(os.Stderr)
+
 	return bytePassword, nil
 }
 

@@ -18,9 +18,10 @@ func getJob(s *ssh.Session, j *Job) string {
 	if j.script != nil {
 		s.Stdin = bytes.NewReader(j.script)
 		return "cat > outfile.sh && chmod +x ./outfile.sh && ./outfile.sh && rm ./outfile.sh"
-	} else {
-		return j.Command
 	}
+
+	return j.Command
+
 }
 
 // sshCommand creates ssh.Session and run the specified job.
@@ -45,6 +46,7 @@ func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 	if err := session.Run(job); err != nil {
 		log.Fatal("Failed to run: " + err.Error())
 	}
+
 	return Result{host, job, b.String()}
 }
 
@@ -74,5 +76,6 @@ func run(c *Config) (res []Result) {
 	for r := 0; r < len(c.Hosts); r++ {
 		res = append(res, <-results)
 	}
+
 	return res
 }

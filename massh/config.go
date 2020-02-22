@@ -61,6 +61,7 @@ func (c *Config) SetPublicKeyAuth(file string) error {
 	c.SSHConfig.Auth = []ssh.AuthMethod{
 		ssh.PublicKeys(signer),
 	}
+
 	return nil
 }
 
@@ -73,6 +74,7 @@ func (c *Config) SetPasswordAuth(bytePassword []byte) error {
 	c.SSHConfig.Auth = []ssh.AuthMethod{
 		ssh.Password(string(bytePassword)),
 	}
+
 	return nil
 }
 

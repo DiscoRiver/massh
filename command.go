@@ -23,7 +23,6 @@ type cmdEnv struct {
 }
 
 func parseCommands() {
-
 	flag.StringVar(&command.Script,"s", "", "Path to script file. Overrides -c switch.")
 	flag.StringVar(&command.ScriptArgs, "a", "", "Arguments for script")
 	flag.IntVar(&command.WorkerPool,"w", 5, "Specify amount of concurrent workers.")
