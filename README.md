@@ -1,7 +1,7 @@
 ![logo](./doc/logo.jpg)
 
 ### Description
-Pack for running Linux distributed shell commands via SSH. 
+Go package for running Linux distributed shell commands via SSH. 
 
 ### Why?
 I wanted to experiment with distributed SSH commands, and provide a functional replacement for the old, 
