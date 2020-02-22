@@ -7,12 +7,14 @@ import (
 	"log"
 )
 
+// Result contains usable output from SSH commands.
 type Result struct {
 	Host string
 	Job string
 	Output string
 }
 
+// getJob determines the type of job and returns the command string
 func getJob(s *ssh.Session, j *Job) string {
 	// Set up remote script
 	if j.script != nil {
@@ -24,7 +26,7 @@ func getJob(s *ssh.Session, j *Job) string {
 
 }
 
-// sshCommand creates ssh.Session and run the specified job.
+// sshCommand creates ssh.Session and runs the specified job.
 func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", host, "22"), sshConf)
 	if err != nil {
