@@ -29,4 +29,3 @@ func ReadPassword(prompt string) ([]byte, error) {
 
 	return bytePassword, nil
 }
-

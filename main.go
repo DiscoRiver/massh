@@ -12,7 +12,7 @@ import (
 /*
 Right now everything here is designed as a proof of concept. Things in main need to be worked out,
 but for now simply proving that the massh package is behaving as expected is enough.
- */
+*/
 func main() {
 	parseCommands()
 
@@ -25,12 +25,12 @@ func masshConfigBuilder() *massh.Config {
 	config := &massh.Config{
 		Hosts: command.Hosts,
 		SSHConfig: &ssh.ClientConfig{
-			User: command.User,
-			Auth: []ssh.AuthMethod{},
+			User:            command.User,
+			Auth:            []ssh.AuthMethod{},
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-			Timeout: time.Duration(command.Timeout) * time.Second,
+			Timeout:         time.Duration(command.Timeout) * time.Second,
 		},
-		Job: &massh.Job{},
+		Job:        &massh.Job{},
 		WorkerPool: command.WorkerPool,
 	}
 

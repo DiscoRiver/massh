@@ -9,8 +9,8 @@ import (
 
 // Result contains usable output from SSH commands.
 type Result struct {
-	Host string
-	Job string
+	Host   string
+	Job    string
 	Output string
 }
 
@@ -53,7 +53,7 @@ func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 }
 
 // worker invokes sshCommand for each host in the channel
-func worker(hosts <- chan string, results chan<- Result, job *Job, sshConf *ssh.ClientConfig) {
+func worker(hosts <-chan string, results chan<- Result, job *Job, sshConf *ssh.ClientConfig) {
 	for host := range hosts {
 		results <- sshCommand(host, job, sshConf)
 	}

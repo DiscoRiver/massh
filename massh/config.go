@@ -8,21 +8,21 @@ import (
 
 // Config is a config implementation for distributed SSH commands
 type Config struct {
-	Hosts 	[]string
-	SSHConfig *ssh.ClientConfig
-	Job *Job
+	Hosts      []string
+	SSHConfig  *ssh.ClientConfig
+	Job        *Job
 	WorkerPool int
 }
 
 // Job is the remote task config. For script files, use Job.SetLocalScript().
 type Job struct {
-	Command string
-	script []byte // Unexported because we should handle this internally
+	Command    string
+	script     []byte // Unexported because we should handle this internally
 	scriptArgs string
 }
 
 // SetHosts adds a slice of strings as hosts to config
-func (c *Config) SetHosts(hosts []string){
+func (c *Config) SetHosts(hosts []string) {
 	c.Hosts = hosts
 }
 
@@ -89,9 +89,3 @@ func (j *Job) SetLocalScript(s string, args string) error {
 
 	return nil
 }
-
-
-
-
-
-

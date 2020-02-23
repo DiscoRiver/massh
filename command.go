@@ -10,24 +10,25 @@ import (
 )
 
 var command cmdEnv
+
 type cmdEnv struct {
-	Hosts []string
-	Script string
+	Hosts      []string
+	Script     string
 	ScriptArgs string
 	WorkerPool int
-	User string
-	Timeout int
-	PublicKey string
-	Insecure bool
-	Command string
+	User       string
+	Timeout    int
+	PublicKey  string
+	Insecure   bool
+	Command    string
 }
 
 func parseCommands() {
-	flag.StringVar(&command.Script,"s", "", "Path to script file. Overrides -c switch.")
+	flag.StringVar(&command.Script, "s", "", "Path to script file. Overrides -c switch.")
 	flag.StringVar(&command.ScriptArgs, "a", "", "Arguments for script")
-	flag.IntVar(&command.WorkerPool,"w", 5, "Specify amount of concurrent workers.")
-	flag.StringVar(&command.User,"u", "", "Specify user for ssh.")
-	flag.IntVar(&command.Timeout,"t", 10, "Timeout for ssh.")
+	flag.IntVar(&command.WorkerPool, "w", 5, "Specify amount of concurrent workers.")
+	flag.StringVar(&command.User, "u", "", "Specify user for ssh.")
+	flag.IntVar(&command.Timeout, "t", 10, "Timeout for ssh.")
 	flag.StringVar(&command.PublicKey, "p", "", "Public key file.")
 	flag.BoolVar(&command.Insecure, "insecure", false, "Set insecure key mode.")
 	flag.StringVar(&command.Command, "c", "", "Set remote command to run.")
@@ -56,7 +57,7 @@ func parseHosts() {
 			}
 		}
 		command.Hosts = append(command.Hosts, strings.Trim(input, "\n"))
-		}
+	}
 }
 
 // CheckStdin ensures os.Stdin is available, and checks the pipe for potential errors.
