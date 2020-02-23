@@ -1,3 +1,8 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/DiscoRiver/massh)](https://goreportcard.com/report/github.com/DiscoRiver/massh) ![Go Report Card](https://img.shields.io/github/license/DiscoRiver/massh)
+
+
+
+
 ![logo](./doc/logo.jpg)
 
 ### Description
