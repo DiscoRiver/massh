@@ -33,6 +33,9 @@ func main() {
 	config.SetJob(job)
 	config.SetWorkerPool(2)
 	
+        // Make sure config will run
+        config.CheckSanity()
+
 	config.Run()
 }
 ```

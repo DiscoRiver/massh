@@ -41,12 +41,15 @@ func (c *Config) SetWorkerPool(numWorkers int) {
 
 // Run executes the config, return a slice of Results.
 func (c *Config) Run() ([]Result, error) {
-	if err := checkConfigSanity(c); err != nil {
-		return nil, err
-	}
 	return run(c), nil
 }
 
+func (c *Config) CheckSanity() error {
+	if err := checkConfigSanity(c); err != nil {
+		return err
+	}
+	return nil
+}
 // SetKeySignature takes the file provided, reads it, and adds the key signature to the config.
 func (c *Config) SetPublicKeyAuth(file string) error {
 	// read private key file

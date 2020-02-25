@@ -1,6 +1,10 @@
 package _examples
 
-import "github.com/discoriver/massh/massh"
+import (
+	"fmt"
+	"github.com/discoriver/massh/massh"
+	"os"
+)
 
 func example1() {
 	// Create pointers to config & job
@@ -18,6 +22,12 @@ func example1() {
 
 	config.SetJob(job)
 	config.SetWorkerPool(2)
+
+	// Make sure config will run
+	if err := config.CheckSanity(); err != nil {
+		fmt.Printf("%s\n", err)
+		os.Exit(1)
+	}
 
 	config.Run()
 }
