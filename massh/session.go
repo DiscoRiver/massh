@@ -11,7 +11,7 @@ import (
 type Result struct {
 	Host   string
 	Job    string
-	Output string
+	Output []byte
 }
 
 // getJob determines the type of job and returns the command string
@@ -49,7 +49,7 @@ func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 		log.Fatal("Failed to run: " + err.Error())
 	}
 
-	return Result{host, job, b.String()}
+	return Result{host, job, b}
 }
 
 // worker invokes sshCommand for each host in the channel
