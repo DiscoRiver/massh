@@ -15,7 +15,7 @@ func checkConfigSanity(c *Config) error {
 	}
 
 	if e != nil {
-		return fmt.Errorf("sanity check failed, the following massh.Config values are not set: %s", e[0:])
+		return fmt.Errorf("sanity check failed, the following config values are not set: %s", e[0:])
 	}
 	return nil
 }

@@ -24,7 +24,6 @@ func getJob(s *ssh.Session, j *Job) string {
 	}
 
 	return j.Command
-
 }
 
 // sshCommand creates ssh.Session and runs the specified job.

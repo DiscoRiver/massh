@@ -16,8 +16,13 @@ but for now simply proving that the massh package is behaving as expected is eno
 func main() {
 	parseCommands()
 
-	mConfig := masshConfigBuilder()
+	//mConfig := masshConfigBuilder()
+	mConfig := massh.Config{}
 
+	if err := mConfig.CheckSanity(); err != nil {
+		fmt.Printf("%s\n", err)
+		os.Exit(0)
+	}
 	fmt.Print(mConfig.Run())
 }
 
