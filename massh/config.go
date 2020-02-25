@@ -53,7 +53,7 @@ func (c *Config) SetPublicKeyAuth(file string) error {
 	}
 
 	// Create the Signer for this private key.
-	signer, err := ssh.ParsePrivateKey(key)
+	signer, err := ssh.ParsePublicKey(key)
 	if err != nil {
 		return fmt.Errorf("unable to parse public key: %s", err)
 	}
