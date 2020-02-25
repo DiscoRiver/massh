@@ -40,8 +40,11 @@ func (c *Config) SetWorkerPool(numWorkers int) {
 }
 
 // Run executes the config, return a slice of Results.
-func (c *Config) Run() []Result {
-	return run(c)
+func (c *Config) Run() ([]Result, error) {
+	if err := checkConfigSanity(c); err != nil {
+		return nil, err
+	}
+	return run(c), nil
 }
 
 // SetKeySignature takes the file provided, reads it, and adds the key signature to the config.
