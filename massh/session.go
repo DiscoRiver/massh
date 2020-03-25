@@ -44,12 +44,16 @@ func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 
 	// run the job
 	var b bytes.Buffer
+	var r Result
 	session.Stdout = &b
 	if err := session.Run(job); err != nil {
-		log.Fatal("Failed to run: " + err.Error())
+		r.Error = err
 	}
-
-	return Result{host, job, b.Bytes(), nil}
+	r.Host = host
+	r.Job = job
+	r.Output = b.Bytes()
+	
+	return r
 }
 
 // worker invokes sshCommand for each host in the channel
