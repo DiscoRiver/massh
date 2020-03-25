@@ -50,6 +50,7 @@ func (c *Config) CheckSanity() error {
 	}
 	return nil
 }
+
 // SetKeySignature takes the file provided, reads it, and adds the key signature to the config.
 func (c *Config) SetPublicKeyAuth(file string) error {
 	// read private key file

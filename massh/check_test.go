@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestcheckConfigSanity(t *testing.T) {
+func TestSuccesscheckConfigSanity(t *testing.T) {
 
 	// This config should be valid
 	goodConfig := &Config{
