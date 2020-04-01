@@ -7,7 +7,7 @@ import (
 )
 
 func GetSSHAuthSock() (ssh.AuthMethod, error) {
-	sshAgent, err := net.Dial("unix", "SSH_AUTH_SOCK")
+	sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
 	if err != nil {
 		return nil, err
 	}
