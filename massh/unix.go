@@ -4,6 +4,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	"net"
+	"os"
 )
 
 func GetSSHAuthSock() (ssh.AuthMethod, error) {
