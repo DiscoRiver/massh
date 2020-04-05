@@ -1,8 +1,8 @@
-package main
+package example1
 
 import (
 	"fmt"
-	"github.com/discoriver/massh/massh"
+	massh2 "github.com/discoriver/massh"
 	"golang.org/x/crypto/ssh"
 	"os"
 	"os/user"
@@ -17,7 +17,7 @@ func main() {
 	parseCommands()
 
 	//mConfig := masshConfigBuilder()
-	mConfig := massh.Config{}
+	mConfig := massh2.Config{}
 
 	if err := mConfig.CheckSanity(); err != nil {
 		fmt.Printf("%s\n", err)
@@ -26,8 +26,8 @@ func main() {
 	fmt.Print(mConfig.Run())
 }
 
-func masshConfigBuilder() *massh.Config {
-	config := &massh.Config{
+func masshConfigBuilder() *massh2.Config {
+	config := &massh2.Config{
 		Hosts: command.Hosts,
 		SSHConfig: &ssh.ClientConfig{
 			User:            command.User,
@@ -35,7 +35,7 @@ func masshConfigBuilder() *massh.Config {
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 			Timeout:         time.Duration(command.Timeout) * time.Second,
 		},
-		Job:        &massh.Job{},
+		Job:        &massh2.Job{},
 		WorkerPool: command.WorkerPool,
 	}
 
@@ -45,7 +45,7 @@ func masshConfigBuilder() *massh.Config {
 			os.Exit(1)
 		}
 	} else {
-		pass, err := massh.ReadPassword("Enter SSH Password: ")
+		pass, err := massh2.ReadPassword("Enter SSH Password: ")
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
