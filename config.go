@@ -42,7 +42,7 @@ func (c *Config) SetWorkerPool(numWorkers int) {
 // SetSSHAuthSockAuth uses SSH_AUTH_SOCK environment variable to populate auth method in the SSH config.
 func (c *Config) SetSSHAuthSockAuth() {
 	// SSH_AUTH_SOCK contains the path of the unix socket that the agent uses for communication with other processes.
-	if SSHAuthSock, err := GetSSHAuthSock(); err == nil {
+	if SSHAuthSock, err := getSSHAuthSock(); err == nil {
 		c.SSHConfig.Auth = append(c.SSHConfig.Auth, SSHAuthSock)
 	}
 }

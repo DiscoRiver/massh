@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func GetSSHAuthSock() (ssh.AuthMethod, error) {
+func getSSHAuthSock() (ssh.AuthMethod, error) {
 	sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
 	if err != nil {
 		return nil, err
