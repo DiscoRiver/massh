@@ -14,7 +14,7 @@ stale [omnissh](https://github.com/rykugur/omnissh) repository.
 ```
 package main
 
-import "github.com/discoriver/massh/massh"
+import "github.com/discoriver/massh"
 
 func main() {
 	// Create pointers to config & job
