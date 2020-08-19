@@ -1,6 +1,6 @@
 ![logo](./doc/logo.jpg)
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/DiscoRiver/massh)](https://goreportcard.com/report/github.com/DiscoRiver/massh) ![Go Report Card](https://img.shields.io/github/license/DiscoRiver/massh) [![Go Doc](https://img.shields.io/badge/GoDoc-Available-informational)](https://godoc.org/github.com/DiscoRiver/massh/massh)
+[![Go Report Card](https://goreportcard.com/badge/github.com/DiscoRiver/massh)](https://goreportcard.com/report/github.com/DiscoRiver/massh) ![Go Report Card](https://img.shields.io/github/license/DiscoRiver/massh) [![Go Doc](https://img.shields.io/badge/GoDoc-Available-informational)](https://godoc.org/github.com/DiscoRiver/massh)
 
 ### Description
 Go package for running Linux distributed shell commands via SSH. 
@@ -14,7 +14,7 @@ stale [omnissh](https://github.com/rykugur/omnissh) repository.
 ```
 package main
 
-import "github.com/discoriver/massh/massh"
+import "github.com/discoriver/massh"
 
 func main() {
 	// Create pointers to config & job
@@ -33,6 +33,9 @@ func main() {
 	config.SetJob(job)
 	config.SetWorkerPool(2)
 	
+        // Make sure config will run
+        config.CheckSanity()
+
 	config.Run()
 }
 ```

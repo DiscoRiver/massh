@@ -39,9 +39,24 @@ func (c *Config) SetWorkerPool(numWorkers int) {
 	c.WorkerPool = numWorkers
 }
 
+// SetSSHAuthSockAuth uses SSH_AUTH_SOCK environment variable to populate auth method in the SSH config.
+func (c *Config) SetSSHAuthSockAuth() {
+	// SSH_AUTH_SOCK contains the path of the unix socket that the agent uses for communication with other processes.
+	if SSHAuthSock, err := getSSHAuthSock(); err == nil {
+		c.SSHConfig.Auth = append(c.SSHConfig.Auth, SSHAuthSock)
+	}
+}
+
 // Run executes the config, return a slice of Results.
-func (c *Config) Run() []Result {
-	return run(c)
+func (c *Config) Run() ([]Result, error) {
+	return run(c), nil
+}
+
+func (c *Config) CheckSanity() error {
+	if err := checkConfigSanity(c); err != nil {
+		return err
+	}
+	return nil
 }
 
 // SetKeySignature takes the file provided, reads it, and adds the key signature to the config.

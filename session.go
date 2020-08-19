@@ -12,6 +12,7 @@ type Result struct {
 	Host   string
 	Job    string
 	Output []byte
+	Error  error
 }
 
 // getJob determines the type of job and returns the command string
@@ -23,14 +24,13 @@ func getJob(s *ssh.Session, j *Job) string {
 	}
 
 	return j.Command
-
 }
 
 // sshCommand creates ssh.Session and runs the specified job.
 func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", host, "22"), sshConf)
 	if err != nil {
-		return Result{host, "", fmt.Sprintf("unable to connect: %v", err)}
+		return Result{host, "", nil, fmt.Errorf("unable to connect: %v", err)}
 	}
 	defer client.Close()
 
@@ -44,12 +44,16 @@ func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 
 	// run the job
 	var b bytes.Buffer
+	var r Result
 	session.Stdout = &b
 	if err := session.Run(job); err != nil {
-		log.Fatal("Failed to run: " + err.Error())
+		r.Error = err
 	}
-
-	return Result{host, job, b}
+	r.Host = host
+	r.Job = job
+	r.Output = b.Bytes()
+	
+	return r
 }
 
 // worker invokes sshCommand for each host in the channel
