@@ -6,11 +6,14 @@ func checkConfigSanity(c *Config) error {
 	var e []string
 	if c.Hosts == nil {
 		e = append(e, "Hosts")
-	} else if c.Job == nil {
+	}
+	if c.Job == nil {
 		e = append(e, "Job")
-	} else if c.SSHConfig == nil {
+	}
+	if c.SSHConfig == nil {
 		e = append(e, "SSHConfig")
-	} else if c.WorkerPool == 0 {
+	}
+	if c.WorkerPool == 0 {
 		e = append(e, "WorkerPool")
 	}
 

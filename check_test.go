@@ -35,7 +35,15 @@ func TestFailcheckConfigSanity(t *testing.T) {
 	// This config should be invalid
 	badConfig := &Config{}
 
-	if err := checkConfigSanity(badConfig); err == nil {
-		t.Errorf("Expected failure, got success.")
+	var err error
+	if err = checkConfigSanity(badConfig); err == nil {
+		t.Error("Expected failure, got success.")
+		t.FailNow()
+	}
+
+	// Testing this to ensure all unset parameters are returned.
+	expectedErrorString := "sanity check failed, the following config values are not set: [Hosts Job SSHConfig WorkerPool]"
+	if err.Error() != expectedErrorString {
+		t.Errorf("Error did not match expected string.\nGot: %s\nExpected: %s\n", err.Error(), expectedErrorString)
 	}
 }
