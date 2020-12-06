@@ -30,8 +30,8 @@ func (c *Config) SetSSHConfig(s *ssh.ClientConfig) {
 	c.SSHConfig = s
 }
 
-func (c *Config) SetJob(jobPtr *Job) {
-	c.Job = jobPtr
+func (c *Config) SetJob(job *Job) {
+	c.Job = job
 }
 
 // SetWorkerPool populates specified number of concurrent workers in Config.
@@ -60,9 +60,9 @@ func (c *Config) CheckSanity() error {
 }
 
 // SetKeySignature takes the file provided, reads it, and adds the key signature to the config.
-func (c *Config) SetPublicKeyAuth(file string) error {
+func (c *Config) SetPublicKeyAuth(PublicKeyFile string) error {
 	// read private key file
-	key, err := ioutil.ReadFile(file)
+	key, err := ioutil.ReadFile(PublicKeyFile)
 	if err != nil {
 		return fmt.Errorf("unable to read public key file: %s", err)
 	}
@@ -80,14 +80,14 @@ func (c *Config) SetPublicKeyAuth(file string) error {
 	return nil
 }
 
-func (j *Job) SetCommand(c string) {
-	j.Command = c
+func (j *Job) SetCommand(command string) {
+	j.Command = command
 }
 
 // SetPasswordAuth sets ssh password from provided byte slice (read from terminal)
-func (c *Config) SetPasswordAuth(bytePassword []byte) error {
+func (c *Config) SetPasswordAuth(password []byte) error {
 	c.SSHConfig.Auth = []ssh.AuthMethod{
-		ssh.Password(string(bytePassword)),
+		ssh.Password(string(password)),
 	}
 
 	return nil

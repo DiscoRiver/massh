@@ -69,7 +69,7 @@ func run(c *Config) (res []Result) {
 	hosts := make(chan string, len(c.Hosts))
 	results := make(chan Result, len(c.Hosts))
 
-	// Set up a basic worker pool.
+	// Set up a worker pool that will accept hosts on the hosts channel.
 	for i := 0; i < c.WorkerPool; i++ {
 		go worker(hosts, results, c.Job, c.SSHConfig)
 	}
