@@ -12,6 +12,8 @@ type Config struct {
 	SSHConfig  *ssh.ClientConfig
 	Job        *Job
 	WorkerPool int
+	StdoutStream chan []byte
+	StderrStream chan []byte
 }
 
 // Job is the remote task config. For script files, use Job.SetLocalScript().
@@ -50,6 +52,18 @@ func (c *Config) SetSSHAuthSockAuth() {
 // Run executes the config, return a slice of Results.
 func (c *Config) Run() ([]Result, error) {
 	return run(c), nil
+}
+
+func (c *Config) Stream() error {
+	if c.StdoutStream == nil {
+		return fmt.Errorf("cannot stream, StdoutStream is nil")
+	}
+	if c.StderrStream == nil {
+		return fmt.Errorf("cannot stream, StderrStream is nil")
+	}
+
+	run(c)
+	return nil
 }
 
 func (c *Config) CheckSanity() error {
