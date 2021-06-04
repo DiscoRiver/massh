@@ -54,16 +54,8 @@ func (c *Config) Run() ([]Result, error) {
 	return run(c), nil
 }
 
-func (c *Config) Stream() error {
-	if c.StdoutStream == nil {
-		return fmt.Errorf("cannot stream, StdoutStream is nil")
-	}
-	if c.StderrStream == nil {
-		return fmt.Errorf("cannot stream, StderrStream is nil")
-	}
-
+func (c *Config) Stream() {
 	run(c)
-	return nil
 }
 
 func (c *Config) CheckSanity() error {

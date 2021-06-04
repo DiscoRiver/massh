@@ -14,6 +14,8 @@ type Result struct {
 	Job    string // The command that was run
 	Output []byte
 	Error  error
+	StdOutStream chan []byte
+	StdErrStream chan []byte
 }
 
 // getJob determines the type of job and returns the command string
@@ -31,7 +33,7 @@ func getJob(s *ssh.Session, j *Job) string {
 func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", host, "22"), sshConf)
 	if err != nil {
-		return Result{host, "", nil, fmt.Errorf("unable to connect: %v", err)}
+		return Result{host, "", nil, fmt.Errorf("unable to connect: %v", err), nil, nil}
 	}
 	defer client.Close()
 
@@ -59,7 +61,7 @@ func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 
 
 // TODO: Find a way to associate output in channel to a specific host. Currently, everything will be streamed to a single channel which is not ideal for processing purposes.
-func sshCommandStream(host string, j *Job, sshConf *ssh.ClientConfig, stdoutStream chan []byte, stderrStream chan []byte) (err error) {
+func sshCommandStream(host string, j *Job, sshConf *ssh.ClientConfig, stdOutChan chan []byte, stdErrChan chan []byte) (err error) {
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", host, "22"), sshConf)
 	if err != nil {
 		return fmt.Errorf("unable to connect: %v", err)
@@ -86,14 +88,14 @@ func sshCommandStream(host string, j *Job, sshConf *ssh.ClientConfig, stdoutStre
 		return fmt.Errorf("could not set StdOutPipe: %s", err)
 	}
 
+	// Using a goroutine here so we can reade from StdOutPipe as it's populated, rather than
+	// only once the command has finished executing.
+	go reader(StdOutPipe, stdOutChan)
+	go reader(StdErrPipe, stdErrChan)
+
 	if err := session.Start(job); err != nil {
 		panic(err)
 	}
-
-	// Using a goroutine here so we can reade from StdOutPipe as it's populated, rather than
-	// only once the command has finished executing.
-	go reader(StdOutPipe, stdoutStream)
-	go reader(StdErrPipe, stderrStream)
 
 	// Need to use session.Start, and session.Wait after we initiate the gorountine to Reader,
 	// rather than using session.Run, which waits for the command before writing the output.
@@ -103,7 +105,6 @@ func sshCommandStream(host string, j *Job, sshConf *ssh.ClientConfig, stdoutStre
 
 	return nil
 }
-
 
 func reader(rdr io.Reader, stream chan []byte) {
 	var data = make([]byte, 1024)
@@ -118,16 +119,18 @@ func reader(rdr io.Reader, stream chan []byte) {
 }
 
 // worker invokes sshCommand for each host in the channel
-func worker(hosts <-chan string, results chan<- Result, job *Job, sshConf *ssh.ClientConfig, stdout chan []byte, stderr chan []byte) {
-	if stdout == nil || stderr == nil {
+func worker(hosts <-chan string, results chan<- Result, job *Job, sshConf *ssh.ClientConfig, stdOutChan chan []byte, stdErrChan chan []byte) {
+	if stdOutChan == nil || stdErrChan == nil {
 		for host := range hosts {
 			results <- sshCommand(host, job, sshConf)
 		}
 	} else {
 		for host := range hosts {
-			if err := sshCommandStream(host, job, sshConf, stdout, stderr); err != nil {
+			if err := sshCommandStream(host, job, sshConf, stdOutChan, stdErrChan); err != nil {
 				// write error
 			}
+			//TODO: This is all wrong
+			results <- Result{}
 		}
 	}
 }

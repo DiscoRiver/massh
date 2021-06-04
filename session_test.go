@@ -12,7 +12,7 @@ import (
 // Credentials are fine to leave here for ease-of-use, as it's an isolated Linux box.
 func TestSshCommandStream(t *testing.T) {
 	j := &Job{
-		Command: "hexdump -C /dev/urandom",
+		Command: "echo \"Hello\"; sleep 5; echo \"World\"",
 	}
 
 	sshc := &ssh.ClientConfig{
@@ -22,38 +22,37 @@ func TestSshCommandStream(t *testing.T) {
 		Timeout:         time.Duration(10) * time.Second,
 	}
 
-	var stdout = make(chan []byte)
-	var stderr = make(chan []byte)
+	stdout := make(chan []byte)
+	stderr := make(chan []byte)
 
 	cfg := &Config{
-		Hosts: []string{"192.168.1.114"},
+		Hosts: []string{"192.168.1.116", "192.168.1.116"},
 		SSHConfig: sshc,
 		Job: j,
+		WorkerPool: 10,
 		StdoutStream: stdout,
 		StderrStream: stderr,
-		WorkerPool: 10,
 	}
 
 	go readStream(stdout)
 	go readStream(stderr)
 
-	err := cfg.Stream()
-	if err != nil {
-		panic(err)
-	}
+	cfg.Stream()
 }
 
 func readStream(stream chan []byte) {
-	timer := time.NewTimer(time.Second * 10)
+	duration := time.Second * 20
+	timer := time.NewTimer(duration)
 	defer timer.Stop()
 	for {
 		select {
 		case d := <-stream:
 			fmt.Printf("%s", d)
-			// Check for regexp match in S.Buffer
+			timer.Reset(duration)
 		case <-timer.C:
 			// Handle timeout
-			return
+			close(stream)
+			fmt.Println("chan closed")
 		}
 	}
 }
