@@ -12,7 +12,7 @@ import (
 // Credentials are fine to leave here for ease-of-use, as it's an isolated Linux box.
 func TestSshCommandStream(t *testing.T) {
 	j := &Job{
-		Command: "echo \"YEAH BOI\"",
+		Command: "echo \"Hello, World\"",
 	}
 
 	sshc := &ssh.ClientConfig{
@@ -23,11 +23,10 @@ func TestSshCommandStream(t *testing.T) {
 	}
 
 	cfg := &Config{
-		Hosts: []string{"192.168.1.117", "192.168.1.118"},
-		SSHConfig: sshc,
-		Job: j,
+		Hosts:      []string{"192.168.1.119", "192.168.1.120", "192.168.1.129", "192.168.1.212"},
+		SSHConfig:  sshc,
+		Job:        j,
 		WorkerPool: 10,
-
 	}
 
 	resChan := make(chan Result)
@@ -36,14 +35,19 @@ func TestSshCommandStream(t *testing.T) {
 	cfg.Stream(resChan)
 
 	for {
-		d := <-resChan
-		go func() {
-			err := readStream(d)
-			if err != nil {
-				fmt.Println(err)
+		select {
+		case d := <-resChan:
+			go func() {
+				err := readStream(d)
+				if err != nil {
+					fmt.Println(err)
+				}
+			}()
+		default:
+			if Returned == len(cfg.Hosts) {
+				return
 			}
-		}()
-
+		}
 	}
 }
 

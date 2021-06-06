@@ -5,7 +5,15 @@ import (
 	"fmt"
 	"golang.org/x/crypto/ssh"
 	"io"
-	"log"
+)
+
+var (
+	// Returned is so we know when all hosts have finished and we can consider the ssh task completed.
+	Returned int
+)
+
+const (
+	sshPort = "22"
 )
 
 // Result contains usable output from SSH commands.
@@ -13,118 +21,146 @@ type Result struct {
 	Host   string // Hostname
 	Job    string // The command that was run
 	Output []byte
+
+	// Package errors, not output from SSH. Makes the concurrency easier to manage without returning an error.
 	Error  error
+
+	// Stream-specific
 	StdOutStream chan []byte
 	StdErrStream chan []byte
+	// Different than Returned, because it allows us to see which hosts have finished specifically.
+	DoneChannel chan struct{}
 }
 
-// getJob determines the type of job and returns the command string
-func getJob(s *ssh.Session, j *Job) string {
-	// Set up remote script
-	if j.script != nil {
-		s.Stdin = bytes.NewReader(j.script)
-		return "cat > outfile.sh && chmod +x ./outfile.sh && ./outfile.sh && rm ./outfile.sh"
-	}
-
-	return j.Command
-}
-
-// sshCommand creates ssh.Session and runs the specified job.
+// sshCommand runs an SSH task and returns Result only when the command has finished executing.
 func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", host, "22"), sshConf)
+	defer func() {
+		Returned++
+	}()
+
+	var r Result
+
+	// Never return a Result with a blank host
+	r.Host = host
+
+	client, err := dial("tcp", fmt.Sprintf("%s:%s", host, sshPort), sshConf)
 	if err != nil {
-		return Result{host, "", nil, fmt.Errorf("unable to connect: %v", err), nil, nil}
+		r.Error = fmt.Errorf("unable to connect: %v", err)
+		return r
 	}
 	defer client.Close()
 
-	session, err := client.NewSession()
+	session, err := newClientSession(client)
 	if err != nil {
-		log.Fatal("Failed to create session: ", err)
+		r.Error = fmt.Errorf("failed to create session: %v", err)
+		return r
 	}
 	defer session.Close()
 
+	// Get job string
 	job := getJob(session, j)
+	r.Job = job
 
 	// run the job
 	var b bytes.Buffer
-	var r Result
 	session.Stdout = &b
-	if err := session.Run(job); err != nil {
+	if err := runJob(session, job); err != nil {
 		r.Error = err
+		return r
 	}
-	r.Host = host
-	r.Job = job
+
 	r.Output = b.Bytes()
-	
+
 	return r
 }
 
 
-// TODO: Find a way to associate output in channel to a specific host. Currently, everything will be streamed to a single channel which is not ideal for processing purposes.
-func sshCommandStream(host string, j *Job, sshConf *ssh.ClientConfig, resChan chan Result) (err error) {
-	r := Result{}
+func sshCommandStream(host string, j *Job, sshConf *ssh.ClientConfig, resultChannel chan Result) {
+	var r Result
+	// This is needed so we don't need to write to the channel before every return statement when erroring..
+	defer func() {
+		if r.Error != nil {
+			resultChannel <- r
+		}
+		Returned++
+		r.DoneChannel <- struct{}{}
+	}()
+
+	// Never send to the result channel with a blank host.
 	r.Host = host
 
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", host, "22"), sshConf)
+	client, err := dial("tcp", fmt.Sprintf("%s:%s", host, sshPort), sshConf)
 	if err != nil {
 		r.Error = fmt.Errorf("unable to connect: %v", err)
-		resChan <- r
 		return
 	}
 	defer client.Close()
 
-	session, err := client.NewSession()
+	session, err := newClientSession(client)
 	if err != nil {
 		r.Error = fmt.Errorf("failed to create session: %s", err)
-		resChan <- r
 		return
 	}
 	defer session.Close()
 
+	// Get job string
 	job := getJob(session, j)
 	r.Job = job
 
-	var StdOutPipe io.Reader
-	StdOutPipe, err = session.StdoutPipe()
+	// Set the stdout pipe which we will read/redirect later to our stdout channel
+	StdOutPipe, err := session.StdoutPipe()
 	if err != nil {
 		r.Error = fmt.Errorf("could not set StdOutPipe: %s", err)
+		return
 	}
-
-	var StdErrPipe io.Reader
-	StdErrPipe, err = session.StderrPipe()
-	if err != nil {
-		r.Error = fmt.Errorf("could not set StdOutPipe: %s", err)
-	}
-
+	// Channel used for streaming stdout
 	stdout := make(chan []byte)
-	stderr := make(chan []byte)
 	r.StdOutStream = stdout
+
+	// Set the stderr pipe which we will read/redirect later to our stderr channel
+	StdErrPipe, err := session.StderrPipe()
+	if err != nil {
+		r.Error = fmt.Errorf("could not set StdOutPipe: %s", err)
+		return
+	}
+	// Channel used for streaming stderr
+	stderr := make(chan []byte)
 	r.StdErrStream = stderr
 
-	// Using a goroutine here so we can reade from StdOutPipe as it's populated, rather than
-	// only once the command has finished executing.
-	go reader(StdOutPipe, r.StdOutStream)
-	go reader(StdErrPipe, r.StdErrStream)
+	// Set up a special channel to report completion of the ssh task. This is easier than handling exit codes etc.
+	//
+	// Using struct{} for memory saving as it takes up 0 bytes; bool take up 1, and we don't actually care
+	// what is written to the done channel, just that "something" is read from it so that we know the
+	// command exited.
+	done := make(chan struct{})
+	r.DoneChannel = done
 
-	if err := session.Start(job); err != nil {
+	// Reading from our pipes as they're populated, and redirecting bytes to our stdout and stderr channels in Result.
+	//
+	// We're doing this before we start the ssh task so we can start churning through output as soon as it starts.
+	go readToBytesChannel(StdOutPipe, r.StdOutStream)
+	go readToBytesChannel(StdErrPipe, r.StdErrStream)
+
+	resultChannel <- r
+	// Start the job immediately, but don't wait for the command to exit
+	if err := startJob(session, job); err != nil {
 		r.Error = fmt.Errorf("could not start job: %s", err)
+		return
 	}
 
-	resChan <- r
-
-	// Need to use session.Start, and session.Wait after we initiate the gorountine to Reader,
-	// rather than using session.Run, which waits for the command before writing the output.
-	//
-	// This is important for us to be able to stream the output to the stream channel.
-	session.Wait()
-
-	return nil
+	// Wait for the command to exit only after we've initiated all the output channels
+	err = session.Wait()
+	if err != nil {
+		r.Error = fmt.Errorf("could not wait for job to finish: %s", err)
+		return
+	}
 }
 
-func reader(rdr io.Reader, stream chan []byte) {
+// readToBytesChannel reads from io.Reader and directs the data to a byte slice channel for streaming.
+func readToBytesChannel(reader io.Reader, stream chan []byte) {
 	var data = make([]byte, 1024)
 	for {
-		n, err := rdr.Read(data)
+		n, err := reader.Read(data)
 		if err != nil {
 			// Handle error
 			return
@@ -141,17 +177,13 @@ func worker(hosts <-chan string, results chan<- Result, job *Job, sshConf *ssh.C
 		}
 	} else {
 		for host := range hosts {
-			fmt.Println("Streaming.")
-			if err := sshCommandStream(host, job, sshConf, resChan); err != nil {
-				// write error
+			sshCommandStream(host, job, sshConf, resChan)
 			}
-			//TODO: This is all wrong
-			results <- Result{}
-		}
 	}
 }
 
-// run sets up goroutines, worker pool, and returns the command results.
+// runStream is mostly the same as run, except it direct the results to a channel so they can be processed
+// before the command has completed executing (i.e streaming the stdout and stderr as it runs).
 func runStream(c *Config, rs chan Result) {
 	// Channels length is always how many hosts we have
 	hosts := make(chan string, len(c.Hosts))
@@ -162,9 +194,12 @@ func runStream(c *Config, rs chan Result) {
 		go worker(hosts, results, c.Job, c.SSHConfig, rs)
 	}
 
+	// This is what actually triggers the worker(s) to trigger. Each workers takes a host, and when it becomes
+	// available again, it will take another host as long as there are host to be received.
 	for j := 0; j < len(c.Hosts); j++ {
 		hosts <- c.Hosts[j] // send each host to the channel
 	}
+	// Indicate nothing more will be written
 	close(hosts)
 }
 
