@@ -8,7 +8,6 @@ import (
 )
 
 var (
-	// Returned is so we know when all hosts have finished and we can consider the ssh task completed.
 	Returned int
 )
 
@@ -74,16 +73,16 @@ func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 	return r
 }
 
-
 func sshCommandStream(host string, j *Job, sshConf *ssh.ClientConfig, resultChannel chan Result) {
 	var r Result
 	// This is needed so we don't need to write to the channel before every return statement when erroring..
 	defer func() {
 		if r.Error != nil {
 			resultChannel <- r
+			Returned++
+		} else {
+			r.DoneChannel <- struct{}{}
 		}
-		Returned++
-		r.DoneChannel <- struct{}{}
 	}()
 
 	// Never send to the result channel with a blank host.
@@ -142,6 +141,7 @@ func sshCommandStream(host string, j *Job, sshConf *ssh.ClientConfig, resultChan
 	go readToBytesChannel(StdErrPipe, r.StdErrStream)
 
 	resultChannel <- r
+
 	// Start the job immediately, but don't wait for the command to exit
 	if err := startJob(session, job); err != nil {
 		r.Error = fmt.Errorf("could not start job: %s", err)
@@ -149,11 +149,9 @@ func sshCommandStream(host string, j *Job, sshConf *ssh.ClientConfig, resultChan
 	}
 
 	// Wait for the command to exit only after we've initiated all the output channels
-	err = session.Wait()
-	if err != nil {
-		r.Error = fmt.Errorf("could not wait for job to finish: %s", err)
-		return
-	}
+	session.Wait()
+
+	Returned++
 }
 
 // readToBytesChannel reads from io.Reader and directs the data to a byte slice channel for streaming.

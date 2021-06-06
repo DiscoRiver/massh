@@ -49,14 +49,6 @@ Get the massh package;
 
 * [GoDoc](https://godoc.org/github.com/DiscoRiver/massh/massh)
 
-### Notes
-Right now you can either user this repo as-is, which provides simple usage, or you can import the massh
-package and use your own behaviour for building and running the Config.
-
-Output is limited to printing a slice of Results. Additional output processing is required for anything
-fancy. Result is a struct containing the host, the command, and the output (which includes the newline). 
-This should be enough information for all your basic output needs. No status codes are returned. 
-
 When specifying a script, it's contents will be added to stdin, and then the following command will be
 executed to run it on the remote machine;
 
