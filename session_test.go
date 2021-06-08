@@ -3,6 +3,7 @@ package massh
 import (
 	"fmt"
 	"golang.org/x/crypto/ssh"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -46,7 +47,11 @@ func TestSshCommandStream(t *testing.T) {
 	resChan := make(chan Result)
 
 	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
-	cfg.Stream(resChan)
+	err := cfg.Stream(nil)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	var wg sync.WaitGroup
 	// This can probably be cleaner. We're hindered somewhat, I think, by reading a channel from a channel.

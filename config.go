@@ -70,8 +70,12 @@ cfg.Stream(resultChan)
 	}
 ```
  */
-func (c *Config) Stream(rs chan Result) {
+func (c *Config) Stream(rs chan Result) error {
+	if rs == nil {
+		return fmt.Errorf("stream channel cannot be nil")
+	}
 	runStream(c, rs)
+	return nil
 }
 
 func (c *Config) CheckSanity() error {
