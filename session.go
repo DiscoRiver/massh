@@ -137,8 +137,8 @@ func sshCommandStream(host string, j *Job, sshConf *ssh.ClientConfig, resultChan
 	// Reading from our pipes as they're populated, and redirecting bytes to our stdout and stderr channels in Result.
 	//
 	// We're doing this before we start the ssh task so we can start churning through output as soon as it starts.
-	go readToBytesChannel(StdOutPipe, r.StdOutStream)
-	go readToBytesChannel(StdErrPipe, r.StdErrStream)
+	go readToBytesChannel(StdOutPipe, r.StdOutStream, r)
+	go readToBytesChannel(StdErrPipe, r.StdErrStream, r)
 
 	resultChannel <- r
 
@@ -155,12 +155,12 @@ func sshCommandStream(host string, j *Job, sshConf *ssh.ClientConfig, resultChan
 }
 
 // readToBytesChannel reads from io.Reader and directs the data to a byte slice channel for streaming.
-func readToBytesChannel(reader io.Reader, stream chan []byte) {
+func readToBytesChannel(reader io.Reader, stream chan []byte, r Result) {
 	var data = make([]byte, 1024)
 	for {
 		n, err := reader.Read(data)
 		if err != nil {
-			// Handle error
+			r.Error = fmt.Errorf("couldn't read content to stream channel: %s", err)
 			return
 		}
 		stream <- data[:n]
