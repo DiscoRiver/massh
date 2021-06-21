@@ -3,12 +3,12 @@ package massh
 import (
 	"bytes"
 	"fmt"
-	"golang.org/x/crypto/ssh"
 	"io"
 )
 
 var (
-	Returned int
+	// Returns is incremented when a host completes it's work.
+	NumberOfStreamingHostsCompleted int
 )
 
 const (
@@ -32,9 +32,9 @@ type Result struct {
 }
 
 // sshCommand runs an SSH task and returns Result only when the command has finished executing.
-func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
+func sshCommand(host string, config *Config) Result {
 	defer func() {
-		Returned++
+		NumberOfStreamingHostsCompleted++
 	}()
 
 	var r Result
@@ -42,9 +42,9 @@ func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 	// Never return a Result with a blank host
 	r.Host = host
 
-	client, err := dial("tcp", fmt.Sprintf("%s:%s", host, sshPort), sshConf)
+	client, err := generateSSHClientWithPotentialBastion(host, config)
 	if err != nil {
-		r.Error = fmt.Errorf("unable to connect: %v", err)
+		r.Error = err
 		return r
 	}
 	defer client.Close()
@@ -57,7 +57,7 @@ func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 	defer session.Close()
 
 	// Get job string
-	job := getJob(session, j)
+	job := getJob(session, config.Job)
 	r.Job = job
 
 	// run the job
@@ -73,13 +73,13 @@ func sshCommand(host string, j *Job, sshConf *ssh.ClientConfig) Result {
 	return r
 }
 
-func sshCommandStream(host string, j *Job, sshConf *ssh.ClientConfig, resultChannel chan Result) {
+func sshCommandStream(host string, config *Config, resultChannel chan Result) {
 	var r Result
 	// This is needed so we don't need to write to the channel before every return statement when erroring..
 	defer func() {
 		if r.Error != nil {
 			resultChannel <- r
-			Returned++
+			NumberOfStreamingHostsCompleted++
 		} else {
 			r.DoneChannel <- struct{}{}
 		}
@@ -88,9 +88,9 @@ func sshCommandStream(host string, j *Job, sshConf *ssh.ClientConfig, resultChan
 	// Never send to the result channel with a blank host.
 	r.Host = host
 
-	client, err := dial("tcp", fmt.Sprintf("%s:%s", host, sshPort), sshConf)
+	client, err := generateSSHClientWithPotentialBastion(host, config)
 	if err != nil {
-		r.Error = fmt.Errorf("unable to connect: %v", err)
+		r.Error = err
 		return
 	}
 	defer client.Close()
@@ -103,7 +103,7 @@ func sshCommandStream(host string, j *Job, sshConf *ssh.ClientConfig, resultChan
 	defer session.Close()
 
 	// Get job string
-	job := getJob(session, j)
+	job := getJob(session, config.Job)
 	r.Job = job
 
 	// Set the stdout pipe which we will read/redirect later to our stdout channel
@@ -151,7 +151,7 @@ func sshCommandStream(host string, j *Job, sshConf *ssh.ClientConfig, resultChan
 	// Wait for the command to exit only after we've initiated all the output channels
 	session.Wait()
 
-	Returned++
+	NumberOfStreamingHostsCompleted++
 }
 
 // readToBytesChannel reads from io.Reader and directs the data to a byte slice channel for streaming.
@@ -168,14 +168,14 @@ func readToBytesChannel(reader io.Reader, stream chan []byte, r Result) {
 }
 
 // worker invokes sshCommand for each host in the channel
-func worker(hosts <-chan string, results chan<- Result, job *Job, sshConf *ssh.ClientConfig, resChan chan Result) {
+func worker(hosts <-chan string, results chan<- Result, config *Config, resChan chan Result) {
 	if resChan == nil {
 		for host := range hosts {
-			results <- sshCommand(host, job, sshConf)
+			results <- sshCommand(host, config)
 		}
 	} else {
 		for host := range hosts {
-			sshCommandStream(host, job, sshConf, resChan)
+			sshCommandStream(host, config, resChan)
 			}
 	}
 }
@@ -189,7 +189,7 @@ func runStream(c *Config, rs chan Result) {
 
 	// Set up a worker pool that will accept hosts on the hosts channel.
 	for i := 0; i < c.WorkerPool; i++ {
-		go worker(hosts, results, c.Job, c.SSHConfig, rs)
+		go worker(hosts, results, c, rs)
 	}
 
 	// This is what actually triggers the worker(s) to trigger. Each workers takes a host, and when it becomes
@@ -209,7 +209,7 @@ func run(c *Config) (res []Result) {
 
 	// Set up a worker pool that will accept hosts on the hosts channel.
 	for i := 0; i < c.WorkerPool; i++ {
-		go worker(hosts, results, c.Job, c.SSHConfig, nil)
+		go worker(hosts, results, c, nil)
 	}
 
 	for j := 0; j < len(c.Hosts); j++ {

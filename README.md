@@ -2,14 +2,10 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/DiscoRiver/massh)](https://goreportcard.com/report/github.com/DiscoRiver/massh) ![Go Report Card](https://img.shields.io/github/license/DiscoRiver/massh) [![Go Doc](https://img.shields.io/badge/GoDoc-Available-informational)](https://godoc.org/github.com/DiscoRiver/massh)
 
-### Description
+## Description
 Go package for running Linux distributed shell commands via SSH. 
 
-### Why?
-I wanted to experiment with distributed SSH commands, and provide a functional replacement for the old, 
-stale [omnissh](https://github.com/rykugur/omnissh) repository.
-
-### Example:
+## Example:
 
 ```
 package main
@@ -40,17 +36,77 @@ func main() {
 }
 ```
 
-### Usage:
+More examples available in the examples directory.
+
+## Usage:
 Get the massh package;
 
 ```go get github.com/DiscoRiver/massh/massh```
 
-### Documentation
+## Documentation
 
 * [GoDoc](https://godoc.org/github.com/DiscoRiver/massh/massh)
 
-When specifying a script, it's contents will be added to stdin, and then the following command will be
-executed to run it on the remote machine;
+## Other
 
-```cat > outfile.sh && chmod +x ./outfile.sh && ./outfile.sh && rm ./outfile.sh```
+### (Not implemented) Pre-processing script
+
+As part of the `Job`, you can specify `PreProcessScript`, along with `PreProcessingScriptArgs`. This is designed
+to allow a working environment to be configured before an ssh task is performed on each host. This is separate from the main
+command/script task in `Job` to make a distinction between the pre-processing script, and the main task, since running 
+a pre-processing script does not return a `Result`.
+
+It's important to note that a pre-processing script can perform any actions you wish. The only requirement is that 
+the environment variable `MASSH_WORK_ENV` is set, indicating the working directory for the ssh task. If `PreProcessScript`
+is defined and this variable is not set, the command will fail. 
+
+### Bastion Host
+
+It's possible use massh with a Bastion host. You do this by specifying `BastionHost` and `BastionHostSSHConfig` in 
+`Config`. You may leave `BastionHostSSHConfig` as `nil`, in which case `SSHConfig` will be used instead. The process is
+automatic, and if `BastionHost` is not `nil`, it will be used. 
+
+### Streaming output
+
+There is an example of streaming output in the direcotry `_examples/example_streaming`, which contains one way of reading
+from the results channel, and processing the output.
+
+Running `config.Stream()` will populate the provided channel with results. Within this, there are two channels within each
+`Result`, `StdOutStream` and `StdErrStream`, which hold the `stdout` and `stderr` pipes respectively. Reading from these
+channels will give you the host's output/errors. 
+
+When a host has completed it's work and has exited, `Result.DoneChannel` will receive an empty struct. In my example, I use
+the following function to monitor this and report that a host has finished (see `_examples/example_streaming` for full program);
+
+```
+func readStream(res Result, wg *sync.WaitGroup) error {
+	for {
+		select {
+		case d := <-res.StdOutStream:
+			fmt.Printf("%s: %s", res.Host, d)
+		case <-res.DoneChannel:
+			fmt.Printf("%s: Finished\n", res.Host)
+			wg.Done()
+		}
+	}
+}
+```
+
+Unlike with `Config.Run()`, which returns a slice of `Result`s when all hosts have exited, `Config.Stream()` requires some
+additional values to monitor host completion. For each individual host we have `Result.DoneChannel`, as explained above, but
+to detect when _all_ hosts have finished, we have the variable `NumberOfStreamingHostsCompleted`, which will equal the length 
+of `Config.Hosts` once everything has completed. Here is an example of what I'm using in `_examples/example_streaming`;
+
+```
+if NumberOfStreamingHostsCompleted == len(cfg.Hosts) {
+		// We want to wait for all goroutines to complete before we declare that the work is finished, as
+		// it's possible for us to execute this code before we've finished reading/processing all host output
+		wg.Wait()
+
+		fmt.Println("Everything returned.")
+		return
+}
+```
+
+Ultimately, the concurrency model used to read from the results channel is the responsibility of those using this package. 
 

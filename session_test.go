@@ -3,7 +3,6 @@ package massh
 import (
 	"fmt"
 	"golang.org/x/crypto/ssh"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -47,10 +46,10 @@ func TestSshCommandStream(t *testing.T) {
 	resChan := make(chan Result)
 
 	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
-	err := cfg.Stream(nil)
+	err := cfg.Stream(resChan)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		t.Log(err)
+		t.FailNow()
 	}
 
 	var wg sync.WaitGroup
@@ -66,12 +65,13 @@ func TestSshCommandStream(t *testing.T) {
 				} else {
 					err := readStream(result, &wg)
 					if err != nil {
-						fmt.Println(err)
+						t.Log(err)
+						t.FailNow()
 					}
 				}
 			}()
 		default:
-			if Returned == len(cfg.Hosts) {
+			if NumberOfStreamingHostsCompleted == len(cfg.Hosts) {
 				// We want to wait for all goroutines to complete before we declare that the work is finished, as
 				// it's possible for us to execute this code before the gofunc above has completed if left unchecked.
 				wg.Wait()
@@ -93,5 +93,84 @@ func readStream(res Result, wg *sync.WaitGroup) error {
 			fmt.Printf("%s: Finished\n", res.Host)
 			wg.Done()
 		}
+	}
+}
+
+func TestSshBulk(t *testing.T) {
+	testParams := sshTestParameters{
+		Hosts: []string{"192.168.1.119", "192.168.1.120", "192.168.1.129", "192.168.1.212"},
+		User: "u01",
+		Password: "password",
+	}
+
+	j := &Job{
+		Command: "echo \"Hello, World\"",
+	}
+
+	sshc := &ssh.ClientConfig{
+		User:            testParams.User,
+		Auth:            []ssh.AuthMethod{ssh.Password(testParams.Password)},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         time.Duration(2) * time.Second,
+	}
+
+	cfg := &Config{
+		Hosts:      testParams.Hosts,
+		SSHConfig:  sshc,
+		Job:        j,
+		WorkerPool: 10,
+	}
+
+	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
+	res, err := cfg.Run()
+	if err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
+
+	for i := range res {
+		fmt.Printf("%s:: OUTPUT: %s ERROR: %s\n", res[i].Host, res[i].Output, res[i].Error)
+	}
+}
+
+func TestSshBastion(t *testing.T) {
+	testParams := sshTestParameters{
+		Hosts: []string{"192.168.1.119"},
+		User: "u01",
+		Password: "password",
+	}
+
+	j := &Job{
+		Command: "echo \"Hello, World\"",
+	}
+
+	sshc := &ssh.ClientConfig{
+		User:            testParams.User,
+		Auth:            []ssh.AuthMethod{ssh.Password(testParams.Password)},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         time.Duration(2) * time.Second,
+	}
+
+	cfg := &Config{
+		Hosts:      testParams.Hosts,
+		SSHConfig:  sshc,
+		Job:        j,
+		WorkerPool: 10,
+		BastionHost: "192.168.1.120",
+	}
+
+	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
+	res, err := cfg.Run()
+	if err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
+
+	for i := range res {
+		if res[i].Error != nil {
+			fmt.Printf("%s:: OUTPUT: %s ERROR: %s\n", res[i].Host, res[i].Output, res[i].Error)
+			t.FailNow()
+		}
+		fmt.Printf("%s:: OUTPUT: %s ERROR: %s\n", res[i].Host, res[i].Output, res[i].Error)
 	}
 }

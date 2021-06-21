@@ -6,24 +6,42 @@ import (
 	"io/ioutil"
 )
 
+const (
+	preProcessWorkingDirectoryEnv = "MASSH_WORK_ENV"
+)
+
 // Config is a config implementation for distributed SSH commands
 type Config struct {
 	Hosts      []string
 	SSHConfig  *ssh.ClientConfig
 	Job        *Job
 	WorkerPool int
+	BastionHost string
+	// If nil, will use SSHConfig.
+	BastionHostSSHConfig *ssh.ClientConfig
 }
 
 // Job is the remote task config. For script files, use Job.SetLocalScript().
 type Job struct {
 	Command    string
-	script     []byte // Unexported because we should handle this internally
-	scriptArgs string
+	Script     []byte
+	ScriptArgs string
+	PreProcessScript []byte
+	PreProcessScriptArgs string
 }
 
 // SetHosts adds a slice of strings as hosts to config
 func (c *Config) SetHosts(hosts []string) {
 	c.Hosts = hosts
+}
+
+// SetBastionHost sets the bastion host to use for a massh config
+func (c *Config) SetBastionHost(host string) {
+	c.BastionHost = host
+}
+
+func (c *Config) SetBastionHostConfig(s *ssh.ClientConfig) {
+	c.BastionHostSSHConfig = s
 }
 
 func (c *Config) SetSSHConfig(s *ssh.ClientConfig) {
@@ -120,13 +138,29 @@ func (c *Config) SetPasswordAuth(password []byte) error {
 }
 
 // SetLocalScript reads a script file contents into the Job config.
-func (j *Job) SetLocalScript(s string, args string) error {
+func (j *Job) SetLocalScript(filename string, args string) error {
 	var err error
-	j.script, err = ioutil.ReadFile(s)
+	j.Script, err = ioutil.ReadFile(filename)
 	if err != nil {
 		return fmt.Errorf("failed to read script file")
 	}
-	j.scriptArgs = args
+	j.ScriptArgs = args
 
 	return nil
 }
+
+// SetPreProcessingScript reads in the file and args, and adds it to the Job. This script should return the environment
+// variable MASSH_WORK_ENV. Failure to access this variable if a pre-processing script is present will result in the command
+// to fail.
+func (j *Job) SetPreProcessingScript(filename string, args string) error {
+	var err error
+	j.PreProcessScript, err = ioutil.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to read script file")
+	}
+	j.PreProcessScriptArgs = args
+
+	return nil
+}
+
+
