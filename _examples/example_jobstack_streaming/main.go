@@ -9,8 +9,16 @@ import (
 )
 
 func main() {
-	j := &massh.Job{
+	j := massh.Job{
 		Command: "echo \"Hello, World\"",
+	}
+
+	j2 := massh.Job{
+		Command: "echo \"Hello, World 2\"",
+	}
+
+	j3 := massh.Job{
+		Command: "echo \"Hello, World 3\"",
 	}
 
 	sshc := &ssh.ClientConfig{
@@ -25,7 +33,7 @@ func main() {
 		// In this example I was testing with two working hosts, and two non-existent IPs.
 		Hosts:      []string{"192.168.1.119", "192.168.1.120", "192.168.1.129", "192.168.1.212"},
 		SSHConfig:  sshc,
-		Job:        j,
+		JobStack:   &[]massh.Job{j, j2, j3},
 		WorkerPool: 10,
 	}
 
@@ -38,30 +46,25 @@ func main() {
 	}
 
 	var wg sync.WaitGroup
+	numberOfExpectedCompletions := len(cfg.Hosts) * len(*cfg.JobStack)
 	// This can probably be cleaner. We're hindered somewhat, I think, by reading a channel from a channel.
 	for {
 		select {
 		case result := <-resChan:
 			wg.Add(1)
 			go func() {
-				// Need to handle any errors as the existence of this value indicates that the ssh task wasn't started
-				// due to some functional error.
-				//
-				// The reason for this design is that it was important to me not to have the cfg.Stream function return
-				// anything, and having it as part of the Result means we can more easily associate the error with a
-				// host.
 				if result.Error != nil {
 					fmt.Printf("%s: %s\n", result.Host, result.Error)
 					wg.Done()
 				} else {
 					err := readStream(result, &wg)
 					if err != nil {
-						fmt.Println(err)
+						panic(err)
 					}
 				}
 			}()
 		default:
-			if massh.Returned == len(cfg.Hosts) {
+			if massh.NumberOfStreamingHostsCompleted == numberOfExpectedCompletions  {
 				// We want to wait for all goroutines to complete before we declare that the work is finished, as
 				// it's possible for us to execute this code before the gofunc above has completed if left unchecked.
 				wg.Wait()
@@ -83,28 +86,6 @@ func readStream(res massh.Result, wg *sync.WaitGroup) error {
 		case <-res.DoneChannel:
 			// Confirm that the host has exited.
 			fmt.Printf("%s: Finished\n", res.Host)
-			wg.Done()
-		}
-	}
-}
-
-// An example of how you might add a timeout for inactivity if a command is likely to hang forever.
-func readStreamWithTimeout(res massh.Result, wg *sync.WaitGroup, t time.Duration) {
-	timeout := time.Second * t
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-	for {
-		select {
-		case d := <-res.StdOutStream:
-			fmt.Printf("%s: %s", res.Host, d)
-			timer.Reset(timeout)
-		case <-res.DoneChannel:
-			// Confirm that the host has exited.
-			fmt.Printf("%s: Finished\n", res.Host)
-			timer.Reset(timeout)
-			wg.Done()
-		case <-timer.C:
-			fmt.Printf("%s: Timeout due to inactivity\n", res.Host)
 			wg.Done()
 		}
 	}
