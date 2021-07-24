@@ -33,10 +33,6 @@ type Result struct {
 
 // sshCommand runs an SSH task and returns Result only when the command has finished executing.
 func sshCommand(host string, config *Config) Result {
-	defer func() {
-		NumberOfStreamingHostsCompleted++
-	}()
-
 	var r Result
 
 	// Never return a Result with a blank host
