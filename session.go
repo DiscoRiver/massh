@@ -167,21 +167,45 @@ func readToBytesChannel(reader io.Reader, stream chan []byte, r Result) {
 func worker(hosts <-chan string, results chan<- Result, config *Config, resChan chan Result) {
 	if resChan == nil {
 		for host := range hosts {
-			results <- sshCommand(host, config)
+			cfg := *config
+			if cfg.JobStack != nil {
+				for i := range *cfg.JobStack {
+					j := (*cfg.JobStack)[i]
+					cfg.Job = &j
+					results <- sshCommand(host, &cfg)
+				}
+			} else {
+				results <- sshCommand(host, config)
+			}
 		}
 	} else {
 		for host := range hosts {
-			sshCommandStream(host, config, resChan)
+			cfg := *config
+			if cfg.JobStack != nil {
+				for i := range *cfg.JobStack {
+					j := (*cfg.JobStack)[i]
+					cfg.Job = &j
+					sshCommandStream(host, &cfg, resChan)
+				}
+			} else {
+				sshCommandStream(host, config, resChan)
 			}
+		}
 	}
 }
 
 // runStream is mostly the same as run, except it direct the results to a channel so they can be processed
 // before the command has completed executing (i.e streaming the stdout and stderr as it runs).
 func runStream(c *Config, rs chan Result) {
-	// Channels length is always how many hosts we have
+	// Channels length is always how many hosts we have multiplied by the number of jobs we're running.
+	var resultChanLength int
+	if c.JobStack != nil {
+		resultChanLength = len(c.Hosts) * len(*c.JobStack)
+	} else {
+		resultChanLength = len(c.Hosts)
+	}
 	hosts := make(chan string, len(c.Hosts))
-	results := make(chan Result, len(c.Hosts))
+	results := make(chan Result, resultChanLength)
 
 	// Set up a worker pool that will accept hosts on the hosts channel.
 	for i := 0; i < c.WorkerPool; i++ {
