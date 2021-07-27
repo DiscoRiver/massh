@@ -15,13 +15,14 @@ type Config struct {
 	Hosts      []string
 	SSHConfig  *ssh.ClientConfig
 	Job        *Job
+	JobStack   *[]Job
 	WorkerPool int
 	BastionHost string
 	// If nil, will use SSHConfig.
 	BastionHostSSHConfig *ssh.ClientConfig
 }
 
-// Job is the remote task config. For script files, use Job.SetLocalScript().
+// Job is a single remote task config. For script files, use Job.SetLocalScript().
 type Job struct {
 	Command    string
 	Script     []byte
@@ -67,6 +68,9 @@ func (c *Config) SetSSHAuthSockAuth() {
 
 // Run executes the config, return a slice of Results once the command has exited
 func (c *Config) Run() ([]Result, error) {
+	if err := checkJobs(c); err != nil {
+		return nil, err
+	}
 	return run(c), nil
 }
 
@@ -89,9 +93,14 @@ cfg.Stream(resultChan)
 ```
  */
 func (c *Config) Stream(rs chan Result) error {
+	if err := checkJobs(c); err != nil {
+		return err
+	}
+
 	if rs == nil {
 		return fmt.Errorf("stream channel cannot be nil")
 	}
+
 	runStream(c, rs)
 	return nil
 }

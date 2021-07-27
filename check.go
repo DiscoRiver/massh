@@ -8,8 +8,8 @@ func checkConfigSanity(c *Config) error {
 	if c.Hosts == nil {
 		e = append(e, "Hosts")
 	}
-	if c.Job == nil {
-		e = append(e, "Job")
+	if c.Job == nil && c.JobStack == nil{
+		e = append(e, "Jobs")
 	}
 	if c.SSHConfig == nil {
 		e = append(e, "SSHConfig")
@@ -20,7 +20,16 @@ func checkConfigSanity(c *Config) error {
 	}
 
 	if e != nil {
-		return fmt.Errorf("sanity check failed, the following config values are not set: %s", e[0:])
+		return fmt.Errorf("sanity check failed, the following config items are not correct: %s", e[0:])
+	}
+	return nil
+}
+
+func checkJobs(c *Config) error {
+	if c.Job != nil && c.JobStack != nil {
+		return fmt.Errorf("both Job and JobStack cannot be present in config, use Job for single command, and JobStack for multiple commands")
+	} else if c.Job == nil && c.JobStack == nil {
+		return fmt.Errorf("no jobs present in config")
 	}
 	return nil
 }
