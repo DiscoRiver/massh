@@ -49,17 +49,6 @@ Get the massh package;
 
 ## Other
 
-### (Not implemented) Pre-processing script
-
-As part of the `Job`, you can specify `PreProcessScript`, along with `PreProcessingScriptArgs`. This is designed
-to allow a working environment to be configured before an ssh task is performed on each host. This is separate from the main
-command/script task in `Job` to make a distinction between the pre-processing script, and the main task, since running 
-a pre-processing script does not return a `Result`.
-
-It's important to note that a pre-processing script can perform any actions you wish. The only requirement is that 
-the environment variable `MASSH_WORK_ENV` is set, indicating the working directory for the ssh task. If `PreProcessScript`
-is defined and this variable is not set, the command will fail. 
-
 ### Bastion Host
 
 It's possible use massh with a Bastion host. You do this by specifying `BastionHost` and `BastionHostSSHConfig` in 
