@@ -45,7 +45,7 @@ Get the massh package;
 
 ## Documentation
 
-* [GoDoc](https://godoc.org/github.com/DiscoRiver/massh/massh)
+* [GoDoc](https://godoc.org/github.com/DiscoRiver/massh)
 
 ## Other
 
