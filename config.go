@@ -6,10 +6,6 @@ import (
 	"io/ioutil"
 )
 
-const (
-	preProcessWorkingDirectoryEnv = "MASSH_WORK_ENV"
-)
-
 // Config is a config implementation for distributed SSH commands
 type Config struct {
 	Hosts      []string
@@ -27,8 +23,6 @@ type Job struct {
 	Command    string
 	Script     []byte
 	ScriptArgs string
-	PreProcessScript []byte
-	PreProcessScriptArgs string
 }
 
 // SetHosts adds a slice of strings as hosts to config
@@ -154,20 +148,6 @@ func (j *Job) SetLocalScript(filename string, args string) error {
 		return fmt.Errorf("failed to read script file")
 	}
 	j.ScriptArgs = args
-
-	return nil
-}
-
-// SetPreProcessingScript reads in the file and args, and adds it to the Job. This script should return the environment
-// variable MASSH_WORK_ENV. Failure to access this variable if a pre-processing script is present will result in the command
-// to fail.
-func (j *Job) SetPreProcessingScript(filename string, args string) error {
-	var err error
-	j.PreProcessScript, err = ioutil.ReadFile(filename)
-	if err != nil {
-		return fmt.Errorf("failed to read script file")
-	}
-	j.PreProcessScriptArgs = args
 
 	return nil
 }
