@@ -107,7 +107,7 @@ func (c *Config) CheckSanity() error {
 }
 
 // SetKeySignature takes the file provided, reads it, and adds the key signature to the config.
-func (c *Config) SetPublicKeyAuth(PublicKeyFile string) error {
+func (c *Config) SetPublicKeyAuth(PublicKeyFile string, PublicKeyPassphrase string) error {
 	// read private key file
 	key, err := ioutil.ReadFile(PublicKeyFile)
 	if err != nil {
@@ -115,10 +115,21 @@ func (c *Config) SetPublicKeyAuth(PublicKeyFile string) error {
 	}
 
 	// Create the Signer for this private key.
-	signer, err := ssh.ParsePrivateKey(key)
-	if err != nil {
-		return fmt.Errorf("unable to parse public key: %s", err)
+	var signer ssh.Signer
+	if PublicKeyPassphrase == "" {
+		var err error
+		signer, err = ssh.ParsePrivateKey(key)
+		if err != nil {
+			return fmt.Errorf("unable to parse public key: %s", err)
+		}
+	} else {
+		var err error
+		signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(PublicKeyPassphrase))
+		if err != nil {
+			return fmt.Errorf("unable to parse public key with passphrase: %s", err)
+		}
 	}
+
 
 	c.SSHConfig.Auth = []ssh.AuthMethod{
 		ssh.PublicKeys(signer),
