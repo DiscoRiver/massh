@@ -53,11 +53,16 @@ func (c *Config) SetWorkerPool(numWorkers int) {
 }
 
 // SetSSHAuthSockAuth uses SSH_AUTH_SOCK environment variable to populate auth method in the SSH config.
-func (c *Config) SetSSHAuthSockAuth() {
+func (c *Config) SetSSHAuthSockAuth() error {
 	// SSH_AUTH_SOCK contains the path of the unix socket that the agent uses for communication with other processes.
-	if SSHAuthSock, err := sshAuthSock(); err == nil {
-		c.SSHConfig.Auth = append(c.SSHConfig.Auth, SSHAuthSock)
+	SSHAuthSock, err := sshAuthSock()
+	if err != nil {
+		return err
 	}
+
+	c.SSHConfig.Auth = append(c.SSHConfig.Auth, SSHAuthSock)
+
+	return nil
 }
 
 // Run executes the config, return a slice of Results once the command has exited
@@ -129,11 +134,8 @@ func (c *Config) SetPublicKeyAuth(PublicKeyFile string, PublicKeyPassphrase stri
 			return fmt.Errorf("unable to parse public key with passphrase: %s", err)
 		}
 	}
-
-
-	c.SSHConfig.Auth = []ssh.AuthMethod{
-		ssh.PublicKeys(signer),
-	}
+  
+  c.SSHConfig.Auth = append(c.SSHConfig.Auth, ssh.PublicKeys(signer))
 
 	return nil
 }
@@ -143,12 +145,8 @@ func (j *Job) SetCommand(command string) {
 }
 
 // SetPasswordAuth sets ssh password from provided byte slice (read from terminal)
-func (c *Config) SetPasswordAuth(password []byte) error {
-	c.SSHConfig.Auth = []ssh.AuthMethod{
-		ssh.Password(string(password)),
-	}
-
-	return nil
+func (c *Config) SetPasswordAuth(password []byte) {
+	c.SSHConfig.Auth = append(c.SSHConfig.Auth, ssh.Password(string(password)))
 }
 
 // SetLocalScript reads a script file contents into the Job config.
