@@ -134,8 +134,8 @@ func (c *Config) SetPublicKeyAuth(PublicKeyFile string, PublicKeyPassphrase stri
 			return fmt.Errorf("unable to parse public key with passphrase: %s", err)
 		}
 	}
-
-	c.SSHConfig.Auth = append(c.SSHConfig.Auth, ssh.PublicKeys(signer))
+  
+  c.SSHConfig.Auth = append(c.SSHConfig.Auth, ssh.PublicKeys(signer))
 
 	return nil
 }
