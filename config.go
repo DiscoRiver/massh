@@ -137,7 +137,7 @@ func (c *Config) SetPublicKeyAuth(PublicKeyFile string, PublicKeyPassphrase stri
   
   c.SSHConfig.Auth = append(c.SSHConfig.Auth, ssh.PublicKeys(signer))
 
-	return nil
+  return nil
 }
 
 func (j *Job) SetCommand(command string) {
