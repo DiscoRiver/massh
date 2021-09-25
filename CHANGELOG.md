@@ -1,3 +1,6 @@
+25/09/2021
+- Changed the value of hosts in the config to a map, for the purpose of not allowing duplicate hosts.
+
 18/09/2021
 - Updated Config.SetPublicKeyAuth to accept a key passphrase. Will break existing uses of this function. Use v1.4.0 to avoid this change temporarily.
 

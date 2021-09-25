@@ -13,7 +13,7 @@ import (
 // I'm leaving this test (which is being use in examples), here so I can re-use it in the future.
 
 type sshTestParameters struct {
-	Hosts []string
+	Hosts map[string]struct{}
 	User string
 	Password string
 }
@@ -22,7 +22,12 @@ func TestSshCommandStream(t *testing.T) {
 	NumberOfStreamingHostsCompleted = 0
 
 	testParams := sshTestParameters{
-		Hosts: []string{"192.168.1.119", "192.168.1.120", "192.168.1.129", "192.168.1.212", "192.168.1.129", "192.168.1.212"},
+		Hosts: map[string]struct{}{
+			"192.168.1.119": struct{}{},
+			"192.168.1.125": struct{}{},
+			"192.168.1.130": struct{}{},
+			"192.168.1.212": struct{}{},
+		},
 		User: "u01",
 		Password: "password",
 	}
@@ -100,7 +105,12 @@ func readStream(res Result, wg *sync.WaitGroup) error {
 
 func TestSshBulk(t *testing.T) {
 	testParams := sshTestParameters{
-		Hosts: []string{"192.168.1.119", "192.168.1.120", "192.168.1.129", "192.168.1.212"},
+		Hosts: map[string]struct{}{
+			"192.168.1.119": struct{}{},
+			"192.168.1.125": struct{}{},
+			"192.168.1.130": struct{}{},
+			"192.168.1.212": struct{}{},
+		},
 		User: "u01",
 		Password: "password",
 	}
@@ -137,7 +147,9 @@ func TestSshBulk(t *testing.T) {
 
 func TestSshBastion(t *testing.T) {
 	testParams := sshTestParameters{
-		Hosts: []string{"192.168.1.119"},
+		Hosts: map[string]struct{}{
+			"192.168.1.125": struct{}{},
+		},
 		User: "u01",
 		Password: "password",
 	}
@@ -157,7 +169,7 @@ func TestSshBastion(t *testing.T) {
 		SSHConfig:  sshc,
 		Job:        j,
 		WorkerPool: 10,
-		BastionHost: "192.168.1.121",
+		BastionHost: "192.168.1.130",
 	}
 	cfg.SetPasswordAuth([]byte(testParams.Password))
 
@@ -179,7 +191,12 @@ func TestSshBastion(t *testing.T) {
 
 func TestBulkWithJobStack(t *testing.T) {
 	testParams := sshTestParameters{
-		Hosts: []string{"192.168.1.119", "192.168.1.120", "192.168.1.129", "192.168.1.212"},
+		Hosts: map[string]struct{}{
+			"192.168.1.119": struct{}{},
+			"192.168.1.125": struct{}{},
+			"192.168.1.130": struct{}{},
+			"192.168.1.212": struct{}{},
+		},
 		User: "u01",
 		Password: "password",
 	}
@@ -220,7 +237,12 @@ func TestBulkWithJobStack(t *testing.T) {
 
 func TestSshCommandStreamWithJobStack(t *testing.T) {
 	testParams := sshTestParameters{
-		Hosts: []string{"192.168.1.119", "192.168.1.120"},
+		Hosts: map[string]struct{}{
+			"192.168.1.125": struct{}{},
+			"192.168.1.130": struct{}{},
+			"192.168.1.129": struct{}{},
+			"192.168.1.212": struct{}{},
+		},
 		User: "u01",
 		Password: "password",
 	}

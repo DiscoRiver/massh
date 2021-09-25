@@ -214,8 +214,8 @@ func runStream(c *Config, rs chan Result) {
 
 	// This is what actually triggers the worker(s) to trigger. Each workers takes a host, and when it becomes
 	// available again, it will take another host as long as there are host to be received.
-	for j := 0; j < len(c.Hosts); j++ {
-		hosts <- c.Hosts[j] // send each host to the channel
+	for k, _ := range c.Hosts {
+		hosts <- k // send each host to the channel
 	}
 	// Indicate nothing more will be written
 	close(hosts)
@@ -232,8 +232,8 @@ func run(c *Config) (res []Result) {
 		go worker(hosts, results, c, nil)
 	}
 
-	for j := 0; j < len(c.Hosts); j++ {
-		hosts <- c.Hosts[j] // send each host to the channel
+	for k, _ := range c.Hosts {
+		hosts <- k // send each host to the channel
 	}
 	close(hosts)
 

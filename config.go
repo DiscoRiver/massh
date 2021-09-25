@@ -8,7 +8,7 @@ import (
 
 // Config is a config implementation for distributed SSH commands
 type Config struct {
-	Hosts      []string
+	Hosts      map[string]struct{}
 	SSHConfig  *ssh.ClientConfig
 	Job        *Job
 	JobStack   *[]Job
@@ -25,9 +25,11 @@ type Job struct {
 	ScriptArgs string
 }
 
-// SetHosts adds a slice of strings as hosts to config
+// SetHosts adds a slice of strings as hosts to config. Removes duplicates.
 func (c *Config) SetHosts(hosts []string) {
-	c.Hosts = hosts
+	for i := range hosts {
+		c.Hosts[hosts[i]] = struct{}{}
+	}
 }
 
 // SetBastionHost sets the bastion host to use for a massh config

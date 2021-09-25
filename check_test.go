@@ -9,7 +9,10 @@ func TestSuccesscheckConfigSanity(t *testing.T) {
 
 	// This config should be valid
 	goodConfig := &Config{
-		Hosts: []string{"host1", "host2"},
+		Hosts: map[string]struct{}{
+			"host1": struct{}{},
+			"host2": struct{}{},
+		},
 		SSHConfig: &ssh.ClientConfig{
 			User:            "testUser",
 			Auth:            []ssh.AuthMethod{
