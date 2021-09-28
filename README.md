@@ -41,7 +41,7 @@ More examples available in the examples directory.
 ## Usage:
 Get the massh package;
 
-```go get github.com/DiscoRiver/massh/massh```
+```go get github.com/DiscoRiver/massh```
 
 ## Documentation
 
