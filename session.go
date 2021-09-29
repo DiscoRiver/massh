@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	// Returns is incremented when a host completes it's work.
+	// NumberOfStreamingHostsCompleted is incremented when a Result's DoneChannel is written to, indicating a host has completed it's work.
 	NumberOfStreamingHostsCompleted int
 )
 
@@ -27,7 +27,7 @@ type Result struct {
 	// Stream-specific
 	StdOutStream chan []byte
 	StdErrStream chan []byte
-	// Different than Returned, because it allows us to see which hosts have finished specifically.
+	// Written to when a host completes it's work. This does not indicate that all output from StdOutStream or StdErrStream has been read and/or processed.
 	DoneChannel chan struct{}
 }
 

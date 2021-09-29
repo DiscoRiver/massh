@@ -5,6 +5,10 @@
 ## Description
 Go package for running Linux distributed shell commands via SSH. 
 
+## Contribute
+
+Any contributions are welcome within the scope of the package. Open and issue and let's discuss!
+
 ## Example:
 
 ```
@@ -51,13 +55,13 @@ Get the massh package;
 
 ### Bastion Host
 
-It's possible use massh with a Bastion host. You do this by specifying `BastionHost` and `BastionHostSSHConfig` in 
-`Config`. You may leave `BastionHostSSHConfig` as `nil`, in which case `SSHConfig` will be used instead. The process is
+Specify a bastion host and config with `BastionHost` and `BastionHostSSHConfig` in your
+`massh.Config`. You may leave `BastionHostSSHConfig` as `nil`, in which case `SSHConfig` will be used instead. The process is
 automatic, and if `BastionHost` is not `nil`, it will be used. 
 
 ### Streaming output
 
-There is an example of streaming output in the direcotry `_examples/example_streaming`, which contains one way of reading
+There is an example of streaming output in the direcotry `_examples/example_streaming`, which contains one method of reading
 from the results channel, and processing the output.
 
 Running `config.Stream()` will populate the provided channel with results. Within this, there are two channels within each
@@ -97,5 +101,6 @@ if NumberOfStreamingHostsCompleted == len(cfg.Hosts) {
 }
 ```
 
-Ultimately, the concurrency model used to read from the results channel is the responsibility of those using this package. 
+Ultimately, the concurrency model used to read from the results channel is the responsibility of those using this package. An example of
+how this might be achieved can be found in the https://github.com/discoriver/omnivore package, which is currently in development.
 

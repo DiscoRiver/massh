@@ -1,3 +1,6 @@
+29/09/2021
+- Minor error and comment updates.
+
 25/09/2021
 - Changed the value of hosts in the config to a map, for the purpose of not allowing duplicate hosts.
 
