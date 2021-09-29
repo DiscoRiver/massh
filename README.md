@@ -25,7 +25,7 @@ func main() {
 	
 	config.SetHosts([]string{"host1", "host2"})
 	
-	err := config.SetPublicKeyAuth("~/.ssh/id_rsa")
+	err := config.SetPublicKeyAuth("~/.ssh/id_rsa", "")
 	if err != nil {
 		panic(err)
 	}
