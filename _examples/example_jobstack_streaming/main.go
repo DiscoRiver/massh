@@ -31,11 +31,11 @@ func main() {
 
 	cfg := &massh.Config{
 		// In this example I was testing with two working hosts, and two non-existent IPs.
-		Hosts:      []string{"192.168.1.119", "192.168.1.120", "192.168.1.129", "192.168.1.212"},
 		SSHConfig:  sshc,
 		JobStack:   &[]massh.Job{j, j2, j3},
 		WorkerPool: 10,
 	}
+	cfg.SetHosts([]string{"192.168.1.119", "192.168.1.120", "192.168.1.129", "192.168.1.212"})
 
 	resChan := make(chan massh.Result)
 

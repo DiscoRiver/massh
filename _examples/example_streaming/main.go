@@ -23,11 +23,11 @@ func main() {
 
 	cfg := &massh.Config{
 		// In this example I was testing with two working hosts, and two non-existent IPs.
-		Hosts:      []string{"192.168.1.119", "192.168.1.120", "192.168.1.129", "192.168.1.212"},
 		SSHConfig:  sshc,
 		Job:        j,
 		WorkerPool: 10,
 	}
+	cfg.SetHosts([]string{"192.168.1.119", "192.168.1.120", "192.168.1.129", "192.168.1.212"})
 
 	resChan := make(chan massh.Result)
 
@@ -61,7 +61,7 @@ func main() {
 				}
 			}()
 		default:
-			if massh.Returned == len(cfg.Hosts) {
+			if massh.NumberOfStreamingHostsCompleted == len(cfg.Hosts) {
 				// We want to wait for all goroutines to complete before we declare that the work is finished, as
 				// it's possible for us to execute this code before the gofunc above has completed if left unchecked.
 				wg.Wait()
