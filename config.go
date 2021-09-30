@@ -30,8 +30,6 @@ func NewConfig() *Config {
 	c := &Config{
 		Hosts: map[string]struct{}{},
 		SSHConfig: &ssh.ClientConfig{},
-		Job: &Job{},
-		JobStack: &[]Job{},
 		BastionHostSSHConfig: &ssh.ClientConfig{},
 	}
 	return c
