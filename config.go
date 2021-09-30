@@ -27,6 +27,7 @@ type Job struct {
 
 // SetHosts adds a slice of strings as hosts to config. Removes duplicates.
 func (c *Config) SetHosts(hosts []string) {
+	c.Hosts = map[string]struct{}{}
 	for i := range hosts {
 		c.Hosts[hosts[i]] = struct{}{}
 	}
