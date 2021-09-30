@@ -14,7 +14,7 @@ type Config struct {
 	JobStack   *[]Job
 	WorkerPool int
 	BastionHost string
-	// If nil, will use SSHConfig.
+	// BastionHost's SSH config. If nil, Bastion will use SSHConfig instead.
 	BastionHostSSHConfig *ssh.ClientConfig
 }
 
@@ -38,24 +38,27 @@ func (c *Config) SetBastionHost(host string) {
 	c.BastionHost = host
 }
 
+// SetBastionHostConfig sets the bastion hosts's SSH client config. If value is left nil, SSHConfig will be used instead.
 func (c *Config) SetBastionHostConfig(s *ssh.ClientConfig) {
 	c.BastionHostSSHConfig = s
 }
 
+// SetSSHConfig sets the SSH client config for all hosts.
 func (c *Config) SetSSHConfig(s *ssh.ClientConfig) {
 	c.SSHConfig = s
 }
 
+// SetJob sets Job in Config.
 func (c *Config) SetJob(job *Job) {
 	c.Job = job
 }
 
-// SetWorkerPool populates specified number of concurrent workers in Config.
+// SetWorkerPool populates specified number of concurrent workers in Config. It is safe for this number to be larger than the number of hosts being processed, but it must not be zero.
 func (c *Config) SetWorkerPool(numWorkers int) {
 	c.WorkerPool = numWorkers
 }
 
-// SetSSHAuthSockAuth uses SSH_AUTH_SOCK environment variable to populate auth method in the SSH config.
+// SetSSHAuthSockAuth uses SSH_AUTH_SOCK environment variable to populate auth method in the SSH config. Useful when using keys, and `AgentForwarding` is enabled in the local SSH config.
 func (c *Config) SetSSHAuthSockAuth() error {
 	// SSH_AUTH_SOCK contains the path of the unix socket that the agent uses for communication with other processes.
 	SSHAuthSock, err := sshAuthSock()
@@ -107,6 +110,7 @@ func (c *Config) Stream(rs chan Result) error {
 	return nil
 }
 
+// CheckSanity ensures config is valid.
 func (c *Config) CheckSanity() error {
 	if err := checkConfigSanity(c); err != nil {
 		return err
@@ -114,6 +118,7 @@ func (c *Config) CheckSanity() error {
 	return nil
 }
 
+// TODO: Should probably move some of this to a separate "keys" package.
 // SetKeySignature takes the file provided, reads it, and adds the key signature to the config.
 func (c *Config) SetPublicKeyAuth(PublicKeyFile string, PublicKeyPassphrase string) error {
 	// read private key file
@@ -143,6 +148,7 @@ func (c *Config) SetPublicKeyAuth(PublicKeyFile string, PublicKeyPassphrase stri
   return nil
 }
 
+// SetCommand sets the Command value in Job. This is the Command executed over SSH to all hosts.
 func (j *Job) SetCommand(command string) {
 	j.Command = command
 }

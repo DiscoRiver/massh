@@ -25,6 +25,7 @@ func dial(network, host, port string, config *ssh.ClientConfig) (*ssh.Client, er
 	return c, nil
 }
 
+
 func dialViaBastionClient(network string, bastionHost string, remoteHost string, port string, config *ssh.ClientConfig) (*ssh.Client, error) {
 	bastionClient, err := ssh.Dial(network, bastionHost+":"+port, config)
 	if err != nil {

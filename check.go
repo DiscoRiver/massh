@@ -1,8 +1,16 @@
 package massh
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
-// TODO: Make this required when running Run or Stream. It's currently on the user.
+var (
+	ErrJobConflict = errors.New("only one of job or jobstack must be present in config")
+	ErrNoJobsSet = errors.New("no jobs are set in config")
+)
+
+// TODO: Make this more robust, and automatically performed when running config.Run or config.Stream.
 func checkConfigSanity(c *Config) error {
 	var e []string
 	if c.Hosts == nil {
@@ -20,16 +28,16 @@ func checkConfigSanity(c *Config) error {
 	}
 
 	if e != nil {
-		return fmt.Errorf("sanity check failed, the following config items are not correct: %s", e[0:])
+		return fmt.Errorf("bad config, the following config items are not correct: %s", e[0:])
 	}
 	return nil
 }
 
 func checkJobs(c *Config) error {
 	if c.Job != nil && c.JobStack != nil {
-		return fmt.Errorf("both Job and JobStack cannot be present in config, use Job for single command, and JobStack for multiple commands")
+		return ErrJobConflict
 	} else if c.Job == nil && c.JobStack == nil {
-		return fmt.Errorf("no jobs present in config")
+		return ErrNoJobsSet
 	}
 	return nil
 }

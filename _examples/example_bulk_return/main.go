@@ -27,7 +27,6 @@ func main() {
 
 func masshConfigBuilder() *massh.Config {
 	config := &massh.Config{
-		Hosts: command.Hosts,
 		SSHConfig: &ssh.ClientConfig{
 			User:            command.User,
 			Auth:            []ssh.AuthMethod{},
@@ -37,9 +36,10 @@ func masshConfigBuilder() *massh.Config {
 		Job:        &massh.Job{},
 		WorkerPool: command.WorkerPool,
 	}
+	config.SetHosts(command.Hosts)
 
 	if command.PublicKey != "" {
-		if err := config.SetPublicKeyAuth(command.PublicKey); err != nil {
+		if err := config.SetPublicKeyAuth(command.PublicKey, ""); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
