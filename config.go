@@ -25,9 +25,20 @@ type Job struct {
 	ScriptArgs string
 }
 
+// NewConfig initialises a new massh.Config.
+func NewConfig() *Config {
+	c := &Config{
+		Hosts: map[string]struct{}{},
+		SSHConfig: &ssh.ClientConfig{},
+		Job: &Job{},
+		JobStack: &[]Job{},
+		BastionHostSSHConfig: &ssh.ClientConfig{},
+	}
+	return c
+}
+
 // SetHosts adds a slice of strings as hosts to config. Removes duplicates.
 func (c *Config) SetHosts(hosts []string) {
-	c.Hosts = map[string]struct{}{}
 	for i := range hosts {
 		c.Hosts[hosts[i]] = struct{}{}
 	}
