@@ -38,8 +38,8 @@ func masshConfigBuilder() *massh.Config {
 	}
 	config.SetHosts(command.Hosts)
 
-	if command.PublicKey != "" {
-		if err := config.SetPublicKeyAuth(command.PublicKey, ""); err != nil {
+	if command.PrivateKey != "" {
+		if err := config.SetPrivateKeyAuth(command.PrivateKey, ""); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
