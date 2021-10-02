@@ -136,7 +136,7 @@ func (c *Config) SetPrivateKeyAuth(PrivateKeyFile string, PrivateKeyPassphrase s
 	// read private key file
 	key, err := ioutil.ReadFile(PrivateKeyFile)
 	if err != nil {
-		return fmt.Errorf("unable to read public key file: %s", err)
+		return fmt.Errorf("unable to read private key file: %s", err)
 	}
 
 	// Create the Signer for this private key.
@@ -145,13 +145,13 @@ func (c *Config) SetPrivateKeyAuth(PrivateKeyFile string, PrivateKeyPassphrase s
 		var err error
 		signer, err = ssh.ParsePrivateKey(key)
 		if err != nil {
-			return fmt.Errorf("unable to parse public key: %s", err)
+			return fmt.Errorf("unable to parse private key: %s", err)
 		}
 	} else {
 		var err error
 		signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(PrivateKeyPassphrase))
 		if err != nil {
-			return fmt.Errorf("unable to parse public key with passphrase: %s", err)
+			return fmt.Errorf("unable to parse private key with passphrase: %s", err)
 		}
 	}
   
