@@ -24,7 +24,6 @@ jobs:
     - name: Check config
       run: |
         cat > sshd_config <<EOF
-          Host *
           SyslogFacility AUTHPRIV
           PermitRootLogin yes
           AuthorizedKeysFile	.ssh/authorized_keys
