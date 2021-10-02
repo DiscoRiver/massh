@@ -17,6 +17,40 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: 1.17
+        
+    - name: Ensure ssh is installed
+      run: sudo apt update; sudo apt -y install openssh-server
+      
+    - name: Check config
+      run: |
+        cat > sshd_config <<EOF
+          SyslogFacility AUTHPRIV
+          PermitRootLogin yes
+          AuthorizedKeysFile	.ssh/authorized_keys
+          PasswordAuthentication yes
+          ChallengeResponseAuthentication no
+          UsePAM yes
+          UseDNS no
+          X11Forwarding no
+          PrintMotd no
+        EOF
+        sudo mv sshd_config /etc/ssh/sshd_config
+        sudo systemctl restart ssh
+        
+    - name: Create ssh key
+      run: >
+        ssh-keygen -t rsa -b 4096 -N '' -f ~/.ssh/id_rsa
+        
+    - name: Add key to auth file
+      run: >
+        cat ~/.ssh/id_rsa.pub | tee -a ~/.ssh/authorized_keys
+        
+    - name: Ensure the owner of the key is correct
+      run: |
+        chmod 600 ~/.ssh/authorized_keys
+        chmod 700 ~/.ssh
+        sudo chmod -c 0755 ~/
+        ls -la ~/.ssh
 
     - name: Build
       run: go build -v ./...
