@@ -11,7 +11,7 @@ Any contributions are welcome within the scope of the package. Open and issue an
 
 ## Example:
 
-```
+```go
 package main
 
 import "github.com/discoriver/massh"
@@ -71,7 +71,7 @@ channels will give you the host's output/errors.
 When a host has completed it's work and has exited, `Result.DoneChannel` will receive an empty struct. In my example, I use
 the following function to monitor this and report that a host has finished (see `_examples/example_streaming` for full program);
 
-```
+```go
 func readStream(res Result, wg *sync.WaitGroup) error {
 	for {
 		select {
@@ -90,7 +90,7 @@ additional values to monitor host completion. For each individual host we have `
 to detect when _all_ hosts have finished, we have the variable `NumberOfStreamingHostsCompleted`, which will equal the length 
 of `Config.Hosts` once everything has completed. Here is an example of what I'm using in `_examples/example_streaming`;
 
-```
+```go
 if NumberOfStreamingHostsCompleted == len(cfg.Hosts) {
 		// We want to wait for all goroutines to complete before we declare that the work is finished, as
 		// it's possible for us to execute this code before we've finished reading/processing all host output
