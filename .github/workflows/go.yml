@@ -33,7 +33,7 @@ jobs:
           UseDNS no
           X11Forwarding no
           PrintMotd no
-          IdentityFile ~/.ssh/id_rsa
+          IdentityFile ~/.ssh/id_rsa.pub
           StrictHostKeyChecking no 
         EOF
         sudo mv sshd_config /etc/ssh/sshd_config
