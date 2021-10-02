@@ -34,7 +34,6 @@ func TestSshCommandStream(t *testing.T) {
 
 	sshc := &ssh.ClientConfig{
 		User:            testParams.User,
-		Auth:            []ssh.AuthMethod{ssh.Password(testParams.Password)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(2) * time.Second,
 	}
@@ -45,7 +44,11 @@ func TestSshCommandStream(t *testing.T) {
 		Job:        j,
 		WorkerPool: 10,
 	}
-	cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", "")
+
+	if err := cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
 
 	resChan := make(chan Result)
 
@@ -112,8 +115,6 @@ func TestSshBulk(t *testing.T) {
 	}
 
 	sshc := &ssh.ClientConfig{
-		User:            testParams.User,
-		Auth:            []ssh.AuthMethod{ssh.Password(testParams.Password)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(2) * time.Second,
 	}
@@ -124,7 +125,11 @@ func TestSshBulk(t *testing.T) {
 		Job:        j,
 		WorkerPool: 10,
 	}
-	cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", "")
+
+	if err := cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
 
 	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
 	res, err := cfg.Run()
@@ -159,9 +164,13 @@ func TestSshBastion(t *testing.T) {
 		SSHConfig:  sshc,
 		Job:        j,
 		WorkerPool: 10,
-		BastionHost: "192.168.1.130",
+		BastionHost: "localhost",
 	}
-	cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", "")
+
+	if err := cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
 
 	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
 	res, err := cfg.Run()
@@ -207,7 +216,11 @@ func TestBulkWithJobStack(t *testing.T) {
 		JobStack:   &[]Job{j, j2},
 		WorkerPool: 10,
 	}
-	cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", "")
+
+	if err := cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
 
 	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
 	res, err := cfg.Run()
@@ -253,7 +266,11 @@ func TestSshCommandStreamWithJobStack(t *testing.T) {
 		JobStack:   &[]Job{j, j2, j3},
 		WorkerPool: 10,
 	}
-	cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", "")
+
+	if err := cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
 
 	resChan := make(chan Result)
 
