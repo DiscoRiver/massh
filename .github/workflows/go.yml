@@ -35,6 +35,7 @@ jobs:
           PrintMotd no
           StrictHostKeyChecking no 
         EOF
+        sudo sshd -t
         sudo mv sshd_config /etc/ssh/sshd_config
         sudo systemctl restart ssh
         
