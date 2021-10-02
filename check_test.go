@@ -45,7 +45,7 @@ func TestFailcheckConfigSanity(t *testing.T) {
 	}
 
 	// Testing this to ensure all unset parameters are returned.
-	expectedErrorString := "sanity check failed, the following config items are not correct: [Hosts Jobs SSHConfig WorkerPool]"
+	expectedErrorString := "bad config, the following config items are not correct: [Hosts Jobs SSHConfig WorkerPool]"
 	if err.Error() != expectedErrorString {
 		t.Errorf("Error did not match expected string.\nGot: %s\nExpected: %s\n", err.Error(), expectedErrorString)
 	}
@@ -67,8 +67,8 @@ func TestCheckJobsWithJob(t *testing.T) {
 	}
 
 	// Testing this to ensure all unset parameters are returned.
-	expectedErrorString := "both Job and JobStack cannot be present in config, use Job for single command, and JobStack for multiple commands"
-	if err.Error() != expectedErrorString {
+	expectedErrorString := ErrJobConflict
+	if err.Error() != expectedErrorString.Error() {
 		t.Errorf("Error did not match expected string.\nGot: %s\nExpected: %s\n", err.Error(), expectedErrorString)
 	}
 }
@@ -84,8 +84,8 @@ func TestCheckJobsWithoutJob(t *testing.T) {
 	}
 
 	// Testing this to ensure all unset parameters are returned.
-	expectedErrorString := "no jobs present in config"
-	if err.Error() != expectedErrorString {
+	expectedErrorString := ErrNoJobsSet
+	if err.Error() != expectedErrorString.Error() {
 		t.Errorf("Error did not match expected string.\nGot: %s\nExpected: %s\n", err.Error(), expectedErrorString)
 	}
 }

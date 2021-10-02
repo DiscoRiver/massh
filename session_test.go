@@ -159,7 +159,6 @@ func TestSshBastion(t *testing.T) {
 	}
 
 	sshc := &ssh.ClientConfig{
-		User:            testParams.User,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(2) * time.Second,
 	}
@@ -171,7 +170,7 @@ func TestSshBastion(t *testing.T) {
 		WorkerPool: 10,
 		BastionHost: "192.168.1.130",
 	}
-	cfg.SetPasswordAuth([]byte(testParams.Password))
+	cfg.SetPasswordAuth(testParams.User, testParams.Password)
 
 	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
 	res, err := cfg.Run()
