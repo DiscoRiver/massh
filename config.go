@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
+	"path/filepath"
+	"strings"
+	"github.com/mitchellh/go-homedir"
 )
 
 // Config is a config implementation for distributed SSH commands
@@ -134,6 +137,11 @@ func (c *Config) CheckSanity() error {
 // SetPrivateKeyAuth takes the private key file provided, reads it, and adds the key signature to the config.
 func (c *Config) SetPrivateKeyAuth(PrivateKeyFile string, PrivateKeyPassphrase string) error {
 	// read private key file
+	if strings.HasPrefix("~/", PrivateKeyFile) {
+		home, _ := homedir.Dir()
+		PrivateKeyFile = filepath.Join(home, PrivateKeyFile[2:])
+	}
+
 	key, err := ioutil.ReadFile(PrivateKeyFile)
 	if err != nil {
 		return fmt.Errorf("unable to read private key file: %s", err)
@@ -154,7 +162,7 @@ func (c *Config) SetPrivateKeyAuth(PrivateKeyFile string, PrivateKeyPassphrase s
 			return fmt.Errorf("unable to parse private key with passphrase: %s", err)
 		}
 	}
-  
+
   c.SSHConfig.Auth = append(c.SSHConfig.Auth, ssh.PublicKeys(signer))
 
   return nil

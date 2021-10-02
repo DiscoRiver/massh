@@ -23,13 +23,9 @@ func TestSshCommandStream(t *testing.T) {
 
 	testParams := sshTestParameters{
 		Hosts: map[string]struct{}{
-			"192.168.1.119": struct{}{},
-			"192.168.1.125": struct{}{},
-			"192.168.1.130": struct{}{},
-			"192.168.1.212": struct{}{},
+			"localhost": struct{}{},
 		},
-		User: "u01",
-		Password: "password",
+
 	}
 
 	j := &Job{
@@ -49,6 +45,7 @@ func TestSshCommandStream(t *testing.T) {
 		Job:        j,
 		WorkerPool: 10,
 	}
+	cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", "")
 
 	resChan := make(chan Result)
 
@@ -106,13 +103,8 @@ func readStream(res Result, wg *sync.WaitGroup) error {
 func TestSshBulk(t *testing.T) {
 	testParams := sshTestParameters{
 		Hosts: map[string]struct{}{
-			"192.168.1.119": struct{}{},
-			"192.168.1.125": struct{}{},
-			"192.168.1.130": struct{}{},
-			"192.168.1.212": struct{}{},
+			"localhost": struct{}{},
 		},
-		User: "u01",
-		Password: "password",
 	}
 
 	j := &Job{
@@ -132,6 +124,7 @@ func TestSshBulk(t *testing.T) {
 		Job:        j,
 		WorkerPool: 10,
 	}
+	cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", "")
 
 	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
 	res, err := cfg.Run()
@@ -148,10 +141,8 @@ func TestSshBulk(t *testing.T) {
 func TestSshBastion(t *testing.T) {
 	testParams := sshTestParameters{
 		Hosts: map[string]struct{}{
-			"192.168.1.125": struct{}{},
+			"localhost": struct{}{},
 		},
-		User: "u01",
-		Password: "password",
 	}
 
 	j := &Job{
@@ -170,7 +161,7 @@ func TestSshBastion(t *testing.T) {
 		WorkerPool: 10,
 		BastionHost: "192.168.1.130",
 	}
-	cfg.SetPasswordAuth(testParams.User, testParams.Password)
+	cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", "")
 
 	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
 	res, err := cfg.Run()
@@ -191,13 +182,8 @@ func TestSshBastion(t *testing.T) {
 func TestBulkWithJobStack(t *testing.T) {
 	testParams := sshTestParameters{
 		Hosts: map[string]struct{}{
-			"192.168.1.119": struct{}{},
-			"192.168.1.125": struct{}{},
-			"192.168.1.130": struct{}{},
-			"192.168.1.212": struct{}{},
+			"localhost": struct{}{},
 		},
-		User: "u01",
-		Password: "password",
 	}
 
 	j := Job{
@@ -221,6 +207,7 @@ func TestBulkWithJobStack(t *testing.T) {
 		JobStack:   &[]Job{j, j2},
 		WorkerPool: 10,
 	}
+	cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", "")
 
 	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
 	res, err := cfg.Run()
@@ -237,13 +224,8 @@ func TestBulkWithJobStack(t *testing.T) {
 func TestSshCommandStreamWithJobStack(t *testing.T) {
 	testParams := sshTestParameters{
 		Hosts: map[string]struct{}{
-			"192.168.1.125": struct{}{},
-			"192.168.1.130": struct{}{},
-			"192.168.1.129": struct{}{},
-			"192.168.1.212": struct{}{},
+			"localhost": struct{}{},
 		},
-		User: "u01",
-		Password: "password",
 	}
 
 	j := Job{
@@ -271,6 +253,7 @@ func TestSshCommandStreamWithJobStack(t *testing.T) {
 		JobStack:   &[]Job{j, j2, j3},
 		WorkerPool: 10,
 	}
+	cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", "")
 
 	resChan := make(chan Result)
 
