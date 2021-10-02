@@ -136,8 +136,7 @@ func (c *Config) CheckSanity() error {
 
 // SetPrivateKeyAuth takes the private key file provided, reads it, and adds the key signature to the config.
 func (c *Config) SetPrivateKeyAuth(PrivateKeyFile string, PrivateKeyPassphrase string) error {
-	// read private key file
-	if strings.HasPrefix("~/", PrivateKeyFile) {
+	if strings.HasPrefix(PrivateKeyFile, "~/") {
 		home, _ := homedir.Dir()
 		PrivateKeyFile = filepath.Join(home, PrivateKeyFile[2:])
 	}
