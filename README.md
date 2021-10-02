@@ -7,7 +7,7 @@ Go package for running Linux distributed shell commands via SSH.
 
 ## Contribute
 
-Any contributions are welcome within the scope of the package. Open an issue and let's discuss!
+A lot of my focus so far as been on the streaming aspect of this library, which means some updates to `Config` were done with haste, and as an extension associated checks may have suffered. Therefore, any contributions/improvements are welcome within the scope of the package. Open an issue and let's discuss!
 
 ## Example:
 
