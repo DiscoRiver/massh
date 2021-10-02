@@ -14,29 +14,46 @@ Any contributions are welcome within the scope of the package. Open and issue an
 ```go
 package main
 
-import "github.com/discoriver/massh"
+import (
+	"fmt"
+	"github.com/discoriver/massh"
+	"golang.org/x/crypto/ssh"
+)
 
 func main() {
 	// Create pointers to config & job
-	config := &massh.Config{}
+	config := massh.NewConfig()
+
 	job := &massh.Job{
 		Command: "echo hello world",
 	}
-	
-	config.SetHosts([]string{"host1", "host2"})
-	
-	err := config.SetPublicKeyAuth("~/.ssh/id_rsa", "")
+
+	config.SetHosts([]string{"192.168.1.130", "192.168.1.125"})
+
+	// Password auth
+	config.SetPasswordAuth("u01", "password")
+
+	// Key auth in same config. Auth will try all methods provided before failing.
+	err := config.SetPrivateKeyAuth("/home/u01/.ssh/id_rsa", "")
 	if err != nil {
 		panic(err)
 	}
-	
+
 	config.SetJob(job)
 	config.SetWorkerPool(2)
-	
-        // Make sure config will run
-        config.CheckSanity()
+	config.SetSSHHostKeyCallback(ssh.InsecureIgnoreHostKey())
 
-	config.Run()
+	// Make sure config will run
+	config.CheckSanity()
+
+	res, err := config.Run()
+	if err != nil {
+		panic(err)
+	}
+
+	for i := range res {
+		fmt.Printf("%s:\n \t OUT: %s \t ERR: %s\n", res[i].Host, res[i].Output, res[i].Error)
+	}
 }
 ```
 
