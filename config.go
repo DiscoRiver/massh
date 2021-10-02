@@ -80,6 +80,10 @@ func (c *Config) SetSSHAuthSockAuth() error {
 	return nil
 }
 
+func (c *Config) SetSSHHostKeyCallback(callback ssh.HostKeyCallback) {
+	c.SSHConfig.HostKeyCallback = callback
+}
+
 // Run executes the config, return a slice of Results once the command has exited
 func (c *Config) Run() ([]Result, error) {
 	if err := checkJobs(c); err != nil {
@@ -127,18 +131,17 @@ func (c *Config) CheckSanity() error {
 	return nil
 }
 
-// TODO: Should probably move some of this to a separate "keys" package.
-// SetKeySignature takes the file provided, reads it, and adds the key signature to the config.
-func (c *Config) SetPublicKeyAuth(PublicKeyFile string, PublicKeyPassphrase string) error {
+// SetPrivateKeyAuth takes the private key file provided, reads it, and adds the key signature to the config.
+func (c *Config) SetPrivateKeyAuth(PrivateKeyFile string, PrivateKeyPassphrase string) error {
 	// read private key file
-	key, err := ioutil.ReadFile(PublicKeyFile)
+	key, err := ioutil.ReadFile(PrivateKeyFile)
 	if err != nil {
 		return fmt.Errorf("unable to read public key file: %s", err)
 	}
 
 	// Create the Signer for this private key.
 	var signer ssh.Signer
-	if PublicKeyPassphrase == "" {
+	if PrivateKeyPassphrase == "" {
 		var err error
 		signer, err = ssh.ParsePrivateKey(key)
 		if err != nil {
@@ -146,7 +149,7 @@ func (c *Config) SetPublicKeyAuth(PublicKeyFile string, PublicKeyPassphrase stri
 		}
 	} else {
 		var err error
-		signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(PublicKeyPassphrase))
+		signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(PrivateKeyPassphrase))
 		if err != nil {
 			return fmt.Errorf("unable to parse public key with passphrase: %s", err)
 		}
@@ -163,8 +166,9 @@ func (j *Job) SetCommand(command string) {
 }
 
 // SetPasswordAuth sets ssh password from provided byte slice (read from terminal)
-func (c *Config) SetPasswordAuth(password []byte) {
-	c.SSHConfig.Auth = append(c.SSHConfig.Auth, ssh.Password(string(password)))
+func (c *Config) SetPasswordAuth(username string, password string) {
+	c.SSHConfig.User = username
+	c.SSHConfig.Auth = append(c.SSHConfig.Auth, ssh.Password(password))
 }
 
 // SetLocalScript reads a script file contents into the Job config.
