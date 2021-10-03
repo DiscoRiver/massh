@@ -33,6 +33,8 @@ jobs:
           UseDNS no
           X11Forwarding no
           PrintMotd no
+          
+          Host *
           StrictHostKeyChecking no
         EOF
         sudo mv sshd_config /etc/ssh/sshd_config
