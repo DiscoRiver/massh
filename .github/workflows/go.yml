@@ -27,12 +27,8 @@ jobs:
           SyslogFacility AUTHPRIV
           PermitRootLogin yes
           AuthorizedKeysFile	.ssh/authorized_keys
-          PasswordAuthentication yes
           ChallengeResponseAuthentication no
-          UsePAM yes
-          UseDNS no
-          X11Forwarding no
-          PrintMotd no
+          PubkeyAuthentication yes
         EOF
         cat > ssh_config <<EOF
           StrictHostKeyChecking no
@@ -43,7 +39,7 @@ jobs:
         
     - name: Create ssh key
       run: >
-        ssh-keygen -t rsa -b 4096 -N '' -f ~/.ssh/id_rsa
+        ssh-keygen -t rsa -f ~/.ssh/id_rsa
         
     - name: Add key to auth file
       run: >
