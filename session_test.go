@@ -95,7 +95,7 @@ func readStream(res Result, wg *sync.WaitGroup, t *testing.T) error {
 		select {
 		case d := <-res.StdOutStream:
 			if !strings.Contains(string(d), "Hello, World") {
-				t.Logf("Expected output from stream test not recieved from host %s: %s", res.Host, d)
+				t.Logf("Expected output from stream test not received from host %s: %s", res.Host, d)
 				t.Fail()
 			}
 		case <-res.DoneChannel:
@@ -119,7 +119,7 @@ func TestSshBulk(t *testing.T) {
 
 	for i := range res {
 		if !strings.Contains(string(res[i].Output), "Hello, World") {
-			t.Logf("Expected output from bulk test not recieved from host %s: \n \t Output: %s \n \t Error: %s\n", res[i].Host, res[i].Output, res[i].Error)
+			t.Logf("Expected output from bulk test not received from host %s: \n \t Output: %s \n \t Error: %s\n", res[i].Host, res[i].Output, res[i].Error)
 			t.Fail()
 		}
 	}
@@ -149,7 +149,7 @@ func TestSshBastion(t *testing.T) {
 			t.Fail()
 		}
 		if !strings.Contains(string(res[i].Output), "Hello, World") {
-			t.Logf("Expected output from bastion test not recieved from host %s: \n \t Output: %s \n \t Error: %s\n", res[i].Host, res[i].Output, res[i].Error)
+			t.Logf("Expected output from bastion test not received from host %s: \n \t Output: %s \n \t Error: %s\n", res[i].Host, res[i].Output, res[i].Error)
 			t.Fail()
 		}
 	}
@@ -183,7 +183,7 @@ func TestBulkWithJobStack(t *testing.T) {
 
 	for i := range res {
 		if !strings.Contains(string(res[i].Output), "Hello, World") {
-			t.Logf("Expected output from bulk test not recieved from host %s: \n \t Output: %s \n \t Error: %s\n", res[i].Host, res[i].Output, res[i].Error)
+			t.Logf("Expected output from bulk test not received from host %s: \n \t Output: %s \n \t Error: %s\n", res[i].Host, res[i].Output, res[i].Error)
 			t.Fail()
 		}
 	}
