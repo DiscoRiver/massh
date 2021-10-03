@@ -2,20 +2,20 @@ package massh
 
 import (
 	"fmt"
+	"github.com/mitchellh/go-homedir"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
-	"github.com/mitchellh/go-homedir"
 )
 
 // Config is a config implementation for distributed SSH commands
 type Config struct {
-	Hosts      map[string]struct{}
-	SSHConfig  *ssh.ClientConfig
-	Job        *Job
-	JobStack   *[]Job
-	WorkerPool int
+	Hosts       map[string]struct{}
+	SSHConfig   *ssh.ClientConfig
+	Job         *Job
+	JobStack    *[]Job
+	WorkerPool  int
 	BastionHost string
 	// BastionHost's SSH config. If nil, Bastion will use SSHConfig instead.
 	BastionHostSSHConfig *ssh.ClientConfig
@@ -31,8 +31,8 @@ type Job struct {
 // NewConfig initialises a new massh.Config.
 func NewConfig() *Config {
 	c := &Config{
-		Hosts: map[string]struct{}{},
-		SSHConfig: &ssh.ClientConfig{},
+		Hosts:                map[string]struct{}{},
+		SSHConfig:            &ssh.ClientConfig{},
 		BastionHostSSHConfig: &ssh.ClientConfig{},
 	}
 	return c
@@ -83,6 +83,7 @@ func (c *Config) SetSSHAuthSockAuth() error {
 	return nil
 }
 
+// SetSSHHostKeyCallback sets the HostKeyCallback for the Config's SSHConfig value.
 func (c *Config) SetSSHHostKeyCallback(callback ssh.HostKeyCallback) {
 	c.SSHConfig.HostKeyCallback = callback
 }
@@ -112,7 +113,7 @@ cfg.Stream(resultChan)
 		}()
 	}
 ```
- */
+*/
 func (c *Config) Stream(rs chan Result) error {
 	if err := checkJobs(c); err != nil {
 		return err
@@ -162,9 +163,9 @@ func (c *Config) SetPrivateKeyAuth(PrivateKeyFile string, PrivateKeyPassphrase s
 		}
 	}
 
-  c.SSHConfig.Auth = append(c.SSHConfig.Auth, ssh.PublicKeys(signer))
+	c.SSHConfig.Auth = append(c.SSHConfig.Auth, ssh.PublicKeys(signer))
 
-  return nil
+	return nil
 }
 
 // SetCommand sets the Command value in Job. This is the Command executed over SSH to all hosts.
@@ -189,5 +190,3 @@ func (j *Job) SetLocalScript(filename string, args string) error {
 
 	return nil
 }
-
-

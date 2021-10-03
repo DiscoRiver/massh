@@ -6,7 +6,9 @@ import (
 )
 
 var (
+	// ErrJobConflict indicates that both Job and Jobstack are assigned in Config.
 	ErrJobConflict = errors.New("only one of job or jobstack must be present in config")
+	// ErrNoJobsSet indicates that no job is set for the config.
 	ErrNoJobsSet = errors.New("no jobs are set in config")
 )
 
@@ -16,7 +18,7 @@ func checkConfigSanity(c *Config) error {
 	if c.Hosts == nil {
 		e = append(e, "Hosts")
 	}
-	if c.Job == nil && c.JobStack == nil{
+	if c.Job == nil && c.JobStack == nil {
 		e = append(e, "Jobs")
 	}
 	if c.SSHConfig == nil {

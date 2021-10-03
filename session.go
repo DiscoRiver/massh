@@ -22,7 +22,7 @@ type Result struct {
 	Output []byte
 
 	// Package errors, not output from SSH. Makes the concurrency easier to manage without returning an error.
-	Error  error
+	Error error
 
 	// Stream-specific
 	StdOutStream chan []byte
@@ -214,7 +214,7 @@ func runStream(c *Config, rs chan Result) {
 
 	// This is what actually triggers the worker(s) to trigger. Each workers takes a host, and when it becomes
 	// available again, it will take another host as long as there are host to be received.
-	for k, _ := range c.Hosts {
+	for k := range c.Hosts {
 		hosts <- k // send each host to the channel
 	}
 	// Indicate nothing more will be written
@@ -232,7 +232,7 @@ func run(c *Config) (res []Result) {
 		go worker(hosts, results, c, nil)
 	}
 
-	for k, _ := range c.Hosts {
+	for k := range c.Hosts {
 		hosts <- k // send each host to the channel
 	}
 	close(hosts)

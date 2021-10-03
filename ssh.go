@@ -2,7 +2,7 @@ package massh
 
 /*
 The functions here are mostly abstractions to make things easier to adapt to new methods.
- */
+*/
 
 import (
 	"fmt"
@@ -24,7 +24,6 @@ func dial(network, host, port string, config *ssh.ClientConfig) (*ssh.Client, er
 	}
 	return c, nil
 }
-
 
 func dialViaBastionClient(network string, bastionHost string, remoteHost string, port string, config *ssh.ClientConfig) (*ssh.Client, error) {
 	bastionClient, err := ssh.Dial(network, bastionHost+":"+port, config)
@@ -48,7 +47,7 @@ func dialViaBastionClient(network string, bastionHost string, remoteHost string,
 }
 
 // newClientSession is ssh.Client.NewSession
-func newClientSession(client *ssh.Client) (*ssh.Session, error){
+func newClientSession(client *ssh.Client) (*ssh.Session, error) {
 	session, err := client.NewSession()
 	if err != nil {
 		return nil, err

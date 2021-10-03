@@ -14,14 +14,14 @@ func TestSuccesscheckConfigSanity(t *testing.T) {
 			"host2": struct{}{},
 		},
 		SSHConfig: &ssh.ClientConfig{
-			User:            "testUser",
-			Auth:            []ssh.AuthMethod{
+			User: "testUser",
+			Auth: []ssh.AuthMethod{
 				ssh.Password("password"),
 			},
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 			Timeout:         10,
 		},
-		Job:        &Job{
+		Job: &Job{
 			Command: "hostname",
 		},
 		WorkerPool: 10,
@@ -56,7 +56,7 @@ func TestCheckJobsWithJob(t *testing.T) {
 
 	// No need to enter any other config values for this test.
 	badConfig := &Config{
-		Job: &j,
+		Job:      &j,
 		JobStack: &[]Job{j, j},
 	}
 

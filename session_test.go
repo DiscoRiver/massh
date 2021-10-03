@@ -12,7 +12,7 @@ import (
 
 var (
 	testHosts = map[string]struct{}{"localhost": struct{}{}}
-	
+
 	testBastionHost = "localhost"
 
 	testJob = &Job{
@@ -28,7 +28,7 @@ var (
 	}
 
 	testSSHConfig = &ssh.ClientConfig{
-		User: "runner",
+		User:            "runner",
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(2) * time.Second,
 	}
@@ -94,7 +94,7 @@ func readStream(res Result, wg *sync.WaitGroup, t *testing.T) error {
 	for {
 		select {
 		case d := <-res.StdOutStream:
-			if !strings.Contains(string(d), "Hello, World"){
+			if !strings.Contains(string(d), "Hello, World") {
 				t.Logf("Expected output from stream test not recieved from host %s: %s", res.Host, d)
 				t.Fail()
 			}
@@ -240,7 +240,7 @@ func TestSshCommandStreamWithJobStack(t *testing.T) {
 				}
 			}()
 		default:
-			if NumberOfStreamingHostsCompleted == numberOfExpectedCompletions  {
+			if NumberOfStreamingHostsCompleted == numberOfExpectedCompletions {
 				// We want to wait for all goroutines to complete before we declare that the work is finished, as
 				// it's possible for us to execute this code before the gofunc above has completed if left unchecked.
 				wg.Wait()
