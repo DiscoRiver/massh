@@ -7,8 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -53,12 +52,12 @@ jobs:
         sudo chmod -c 0755 ~/
         ls -la ~/.ssh
         
-    - name: Build
+    - name: Go Build
       run: go build -v ./...
 
-    - name: Test
+    - name: Go Test
       run: go test -v ./...
       
-    - name: Check log
+    - name: Check auth.log log on failure
       if: ${{ failure() }}
       run: cat /var/log/auth.log
