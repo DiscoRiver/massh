@@ -38,7 +38,7 @@ jobs:
           StrictHostKeyChecking no
         EOF
         sudo mv sshd_config /etc/ssh/sshd_config
-        sudo mv ssh_config ~/.ssh/config
+        sudo mv ssh_config /etc/ssh/ssh_config
         sudo systemctl restart ssh
         
     - name: Create ssh key
