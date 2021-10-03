@@ -1,51 +1,50 @@
 package massh
 
 import (
-	"fmt"
 	"golang.org/x/crypto/ssh"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 )
 
-// Credentials are fine to leave here for ease-of-use, as it's an isolated Linux box.
-//
-// I'm leaving this test (which is being use in examples), here so I can re-use it in the future.
+// These tests are set up for use in the .github/workflows/go.yml workflow.
 
-type sshTestParameters struct {
-	Hosts map[string]struct{}
-	User string
-	Password string
-}
+var (
+	testHosts = map[string]struct{}{"localhost": struct{}{}}
+	
+	testBastionHost = "localhost"
 
-func TestSshCommandStream(t *testing.T) {
-	NumberOfStreamingHostsCompleted = 0
-
-	testParams := sshTestParameters{
-		Hosts: map[string]struct{}{
-			"localhost": struct{}{},
-		},
-
-	}
-
-	j := &Job{
+	testJob = &Job{
 		Command: "echo \"Hello, World\"",
 	}
 
-	sshc := &ssh.ClientConfig{
+	testJob2 = &Job{
+		Command: "echo \"Hello, World 2\"",
+	}
+
+	testJob3 = &Job{
+		Command: "echo \"Hello, World 3\"",
+	}
+
+	testSSHConfig = &ssh.ClientConfig{
 		User: "runner",
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(2) * time.Second,
 	}
 
-	cfg := &Config{
-		Hosts:      testParams.Hosts,
-		SSHConfig:  sshc,
-		Job:        j,
+	testConfig = &Config{
+		Hosts:      testHosts,
+		SSHConfig:  testSSHConfig,
+		Job:        testJob,
 		WorkerPool: 10,
 	}
+)
 
-	if err := cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
+func TestSshCommandStream(t *testing.T) {
+	NumberOfStreamingHostsCompleted = 0
+
+	if err := testConfig.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
 		t.Log(err)
 		t.FailNow()
 	}
@@ -53,7 +52,7 @@ func TestSshCommandStream(t *testing.T) {
 	resChan := make(chan Result)
 
 	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
-	err := cfg.Stream(resChan)
+	err := testConfig.Stream(resChan)
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
@@ -67,10 +66,12 @@ func TestSshCommandStream(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				if result.Error != nil {
-					fmt.Printf("%s: %s\n", result.Host, result.Error)
+					t.Logf("Unexpected error in stream test for host %s: %s", result.Host, result.Error)
+					t.Fail()
+
 					wg.Done()
 				} else {
-					err := readStream(result, &wg)
+					err := readStream(result, &wg, t)
 					if err != nil {
 						t.Log(err)
 						t.FailNow()
@@ -78,196 +79,113 @@ func TestSshCommandStream(t *testing.T) {
 				}
 			}()
 		default:
-			if NumberOfStreamingHostsCompleted == len(cfg.Hosts) {
+			if NumberOfStreamingHostsCompleted == len(testConfig.Hosts) {
 				// We want to wait for all goroutines to complete before we declare that the work is finished, as
 				// it's possible for us to execute this code before the gofunc above has completed if left unchecked.
 				wg.Wait()
 
-				// This should always be the last thing written. Waiting above ensures this.
-				fmt.Println("Everything returned.")
 				return
 			}
 		}
 	}
 }
 
-func readStream(res Result, wg *sync.WaitGroup) error {
+func readStream(res Result, wg *sync.WaitGroup, t *testing.T) error {
 	for {
 		select {
 		case d := <-res.StdOutStream:
-			fmt.Printf("%s: %s", res.Host, d)
+			if !strings.Contains(string(d), "Hello World"){
+				t.Logf("Expected output from stream test not recieved from host %s: %s", res.Host, d)
+				t.Fail()
+			}
 		case <-res.DoneChannel:
-			fmt.Printf("%s: Finished\n", res.Host)
 			wg.Done()
 		}
 	}
 }
 
 func TestSshBulk(t *testing.T) {
-	testParams := sshTestParameters{
-		Hosts: map[string]struct{}{
-			"localhost": struct{}{},
-		},
-	}
-
-	j := &Job{
-		Command: "echo \"Hello, World\"",
-	}
-
-	sshc := &ssh.ClientConfig{
-		User: "runner",
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         time.Duration(2) * time.Second,
-	}
-
-	cfg := &Config{
-		Hosts:      testParams.Hosts,
-		SSHConfig:  sshc,
-		Job:        j,
-		WorkerPool: 10,
-	}
-
-	if err := cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
+	if err := testConfig.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
 		t.Log(err)
 		t.FailNow()
 	}
 
 	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
-	res, err := cfg.Run()
+	res, err := testConfig.Run()
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
 	}
 
 	for i := range res {
-		fmt.Printf("%s:: OUTPUT: %s ERROR: %s\n", res[i].Host, res[i].Output, res[i].Error)
+		if !strings.Contains(string(res[i].Output), "Hello World") {
+			t.Logf("Expected output from bulk test not recieved from host %s: \n \t Output: %s \n \t Error: %s\n", res[i].Host, res[i].Output, res[i].Error)
+			t.Fail()
+		}
 	}
 }
 
 func TestSshBastion(t *testing.T) {
-	testParams := sshTestParameters{
-		Hosts: map[string]struct{}{
-			"localhost": struct{}{},
-		},
-	}
+	// Must remove bastion host once test concludes.
+	defer func() { testConfig.BastionHost = "" }()
+	// Add bastion host to config
+	testConfig.SetBastionHost(testBastionHost)
 
-	j := &Job{
-		Command: "echo \"Hello, World\"",
-	}
-
-	sshc := &ssh.ClientConfig{
-		User: "runner",
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         time.Duration(2) * time.Second,
-	}
-
-	cfg := &Config{
-		Hosts:      testParams.Hosts,
-		SSHConfig:  sshc,
-		Job:        j,
-		WorkerPool: 10,
-		BastionHost: "localhost",
-	}
-
-	if err := cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
-		t.Log(err)
+	if err := testConfig.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
+		t.Logf("Couldn't set private key auth: %s", err)
 		t.FailNow()
 	}
 
 	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
-	res, err := cfg.Run()
+	res, err := testConfig.Run()
 	if err != nil {
-		t.Log(err)
+		t.Logf("Run failed to execute: %s", err)
 		t.FailNow()
 	}
 
 	for i := range res {
 		if res[i].Error != nil {
-			fmt.Printf("%s:: OUTPUT: %s ERROR: %s\n", res[i].Host, res[i].Output, res[i].Error)
-			t.FailNow()
+			t.Logf("Unexpected error in bastion test for host %s: %s", res[i].Host, res[i].Error)
+			t.Fail()
 		}
-		fmt.Printf("%s:: OUTPUT: %s ERROR: %s\n", res[i].Host, res[i].Output, res[i].Error)
+		if !strings.Contains(string(res[i].Output), "Hello World") {
+			t.Logf("Expected output from bastion test not recieved from host %s: \n \t Output: %s \n \t Error: %s\n", res[i].Host, res[i].Output, res[i].Error)
+			t.Fail()
+		}
 	}
 }
 
 func TestBulkWithJobStack(t *testing.T) {
-	testParams := sshTestParameters{
-		Hosts: map[string]struct{}{
-			"localhost": struct{}{},
-		},
-	}
+	// Must remove jobstack when test concludes.
+	defer func() { testConfig.JobStack = nil }()
+	testConfig.JobStack = &[]Job{*testJob, *testJob2}
 
-	j := Job{
-		Command: "echo \"Hello, World\"",
-	}
-
-	j2 := Job{
-		Command: "echo \"Hello, World 2\"",
-	}
-
-	sshc := &ssh.ClientConfig{
-		User: "runner",
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         time.Duration(2) * time.Second,
-	}
-
-	cfg := &Config{
-		Hosts:      testParams.Hosts,
-		SSHConfig:  sshc,
-		JobStack:   &[]Job{j, j2},
-		WorkerPool: 10,
-	}
-
-	if err := cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
+	if err := testConfig.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
 		t.Log(err)
 		t.FailNow()
 	}
 
 	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
-	res, err := cfg.Run()
+	res, err := testConfig.Run()
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
 	}
 
 	for i := range res {
-		fmt.Printf("%s:: OUTPUT: %s ERROR: %s\n", res[i].Host, res[i].Output, res[i].Error)
+		if !strings.Contains(string(res[i].Output), "Hello World") {
+			t.Logf("Expected output from bulk test not recieved from host %s: \n \t Output: %s \n \t Error: %s\n", res[i].Host, res[i].Output, res[i].Error)
+			t.Fail()
+		}
 	}
 }
 
 func TestSshCommandStreamWithJobStack(t *testing.T) {
-	testParams := sshTestParameters{
-		Hosts: map[string]struct{}{
-			"localhost": struct{}{},
-		},
-	}
+	// Must remove jobstack when test concludes.
+	defer func() { testConfig.JobStack = nil }()
+	testConfig.JobStack = &[]Job{*testJob, *testJob2, *testJob3}
 
-	j := Job{
-		Command: "echo \"Hello, World\"",
-	}
-
-	j2 := Job{
-		Command: "echo \"Hello, World 2\"",
-	}
-
-	j3 := Job{
-		Command: "echo \"Hello, World 3\"",
-	}
-
-	sshc := &ssh.ClientConfig{
-		User: "runner",
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         time.Duration(2) * time.Second,
-	}
-
-	cfg := &Config{
-		Hosts:      testParams.Hosts,
-		SSHConfig:  sshc,
-		JobStack:   &[]Job{j, j2, j3},
-		WorkerPool: 10,
-	}
-
-	if err := cfg.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
+	if err := testConfig.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
 		t.Log(err)
 		t.FailNow()
 	}
@@ -276,14 +194,14 @@ func TestSshCommandStreamWithJobStack(t *testing.T) {
 
 	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
 	NumberOfStreamingHostsCompleted = 0
-	err := cfg.Stream(resChan)
+	err := testConfig.Stream(resChan)
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
 	}
 
 	var wg sync.WaitGroup
-	numberOfExpectedCompletions := len(cfg.Hosts) * len(*cfg.JobStack)
+	numberOfExpectedCompletions := len(testConfig.Hosts) * len(*testConfig.JobStack)
 	// This can probably be cleaner. We're hindered somewhat, I think, by reading a channel from a channel.
 	for {
 		select {
@@ -291,10 +209,12 @@ func TestSshCommandStreamWithJobStack(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				if result.Error != nil {
-					fmt.Printf("%s: %s\n", result.Host, result.Error)
+					t.Logf("Unexpected error in stream test for host %s: %s", result.Host, result.Error)
+					t.Fail()
+
 					wg.Done()
 				} else {
-					err := readStream(result, &wg)
+					err := readStream(result, &wg, t)
 					if err != nil {
 						t.Log(err)
 						t.FailNow()
@@ -306,9 +226,6 @@ func TestSshCommandStreamWithJobStack(t *testing.T) {
 				// We want to wait for all goroutines to complete before we declare that the work is finished, as
 				// it's possible for us to execute this code before the gofunc above has completed if left unchecked.
 				wg.Wait()
-
-				// This should always be the last thing written. Waiting above ensures this.
-				fmt.Println("Everything returned.")
 				return
 			}
 		}
