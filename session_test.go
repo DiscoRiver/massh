@@ -33,7 +33,6 @@ func TestSshCommandStream(t *testing.T) {
 	}
 
 	sshc := &ssh.ClientConfig{
-		User:            testParams.User,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(2) * time.Second,
 	}
@@ -204,7 +203,6 @@ func TestBulkWithJobStack(t *testing.T) {
 	}
 
 	sshc := &ssh.ClientConfig{
-		User:            testParams.User,
 		Auth:            []ssh.AuthMethod{ssh.Password(testParams.Password)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(2) * time.Second,
@@ -254,7 +252,6 @@ func TestSshCommandStreamWithJobStack(t *testing.T) {
 	}
 
 	sshc := &ssh.ClientConfig{
-		User:            testParams.User,
 		Auth:            []ssh.AuthMethod{ssh.Password(testParams.Password)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(2) * time.Second,
