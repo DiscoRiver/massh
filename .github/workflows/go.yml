@@ -33,12 +33,9 @@ jobs:
           UseDNS no
           X11Forwarding no
           PrintMotd no
-          StrictHostKeyChecking no 
         EOF
-        sudo sshd -t
         sudo mv sshd_config /etc/ssh/sshd_config
         sudo systemctl restart ssh
-        
     - name: Create ssh key
       run: >
         ssh-keygen -t rsa -b 4096 -N '' -f ~/.ssh/id_rsa
