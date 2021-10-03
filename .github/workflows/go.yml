@@ -27,12 +27,7 @@ jobs:
           SyslogFacility AUTHPRIV
           PermitRootLogin yes
           AuthorizedKeysFile	.ssh/authorized_keys
-          PasswordAuthentication yes
           ChallengeResponseAuthentication no
-          UsePAM yes
-          UseDNS no
-          X11Forwarding no
-          PrintMotd no
         EOF
         cat > ssh_config <<EOF
           StrictHostKeyChecking no
