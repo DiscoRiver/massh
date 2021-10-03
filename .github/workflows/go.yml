@@ -28,6 +28,7 @@ jobs:
           PermitRootLogin yes
           AuthorizedKeysFile	.ssh/authorized_keys
           ChallengeResponseAuthentication no
+          PubkeyAuthentication yes
         EOF
         cat > ssh_config <<EOF
           StrictHostKeyChecking no
