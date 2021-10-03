@@ -33,6 +33,7 @@ func TestSshCommandStream(t *testing.T) {
 	}
 
 	sshc := &ssh.ClientConfig{
+		User: "runner",
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(2) * time.Second,
 	}
@@ -114,6 +115,7 @@ func TestSshBulk(t *testing.T) {
 	}
 
 	sshc := &ssh.ClientConfig{
+		User: "runner",
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(2) * time.Second,
 	}
@@ -154,6 +156,7 @@ func TestSshBastion(t *testing.T) {
 	}
 
 	sshc := &ssh.ClientConfig{
+		User: "runner",
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(2) * time.Second,
 	}
@@ -203,7 +206,7 @@ func TestBulkWithJobStack(t *testing.T) {
 	}
 
 	sshc := &ssh.ClientConfig{
-		Auth:            []ssh.AuthMethod{ssh.Password(testParams.Password)},
+		User: "runner",
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(2) * time.Second,
 	}
@@ -252,7 +255,7 @@ func TestSshCommandStreamWithJobStack(t *testing.T) {
 	}
 
 	sshc := &ssh.ClientConfig{
-		Auth:            []ssh.AuthMethod{ssh.Password(testParams.Password)},
+		User: "runner",
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(2) * time.Second,
 	}
