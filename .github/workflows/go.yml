@@ -43,7 +43,7 @@ jobs:
         
     - name: Create ssh key
       run: >
-        ssh-keygen -y -f ~/.ssh/id_rsa
+        ssh-keygen -t rsa -f ~/.ssh/id_rsa
         
     - name: Add key to auth file
       run: >
