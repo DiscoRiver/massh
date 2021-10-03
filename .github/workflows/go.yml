@@ -64,4 +64,5 @@ jobs:
       run: go test -v ./...
       
     - name: Check log
+      if: ${{ failure() }}
       run: cat /var/log/auth.log
