@@ -11,7 +11,7 @@ import (
 // These tests are set up for use in the .github/workflows/go.yml workflow.
 
 var (
-	testHosts = map[string]struct{}{"localhost": struct{}{}}
+	testHosts = map[string]struct{}{"localhost": {}}
 
 	testBastionHost = "localhost"
 

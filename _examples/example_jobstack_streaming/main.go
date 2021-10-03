@@ -64,7 +64,7 @@ func main() {
 				}
 			}()
 		default:
-			if massh.NumberOfStreamingHostsCompleted == numberOfExpectedCompletions  {
+			if massh.NumberOfStreamingHostsCompleted == numberOfExpectedCompletions {
 				// We want to wait for all goroutines to complete before we declare that the work is finished, as
 				// it's possible for us to execute this code before the gofunc above has completed if left unchecked.
 				wg.Wait()
