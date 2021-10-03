@@ -56,9 +56,12 @@ jobs:
         chmod 700 ~/.ssh
         sudo chmod -c 0755 ~/
         ls -la ~/.ssh
-
+        
     - name: Build
       run: go build -v ./...
 
     - name: Test
       run: go test -v ./...
+      
+    - name: Check log
+      run: cat /var/log/auth.log
