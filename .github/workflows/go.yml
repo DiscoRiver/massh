@@ -47,6 +47,7 @@ jobs:
     - name: Add key to auth file
       run: >
         cat ~/.ssh/id_rsa.pub | tee -a ~/.ssh/authorized_keys
+        ssh-add ~/.ssh/id_rsa
         
     - name: Ensure the owner of the key is correct
       run: |
