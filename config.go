@@ -13,9 +13,14 @@ import (
 type Config struct {
 	Hosts       map[string]struct{}
 	SSHConfig   *ssh.ClientConfig
+
+	// Jobs to execute, config will error if both are set
 	Job         *Job
 	JobStack    *[]Job
+
+	// Number of concurrent workers
 	WorkerPool  int
+
 	BastionHost string
 	// BastionHost's SSH config. If nil, Bastion will use SSHConfig instead.
 	BastionHostSSHConfig *ssh.ClientConfig
@@ -70,8 +75,8 @@ func (c *Config) SetWorkerPool(numWorkers int) {
 	c.WorkerPool = numWorkers
 }
 
-// SetSSHAuthSockAuth uses SSH_AUTH_SOCK environment variable to populate auth method in the SSH config. Useful when using keys, and `AgentForwarding` is enabled in the local SSH config.
-func (c *Config) SetSSHAuthSockAuth() error {
+// SetSSHAuthSock uses SSH_AUTH_SOCK environment variable to populate auth method in the SSH config. Useful when using keys, and `AgentForwarding` is enabled in the local SSH config.
+func (c *Config) SetSSHAuthSock() error {
 	// SSH_AUTH_SOCK contains the path of the unix socket that the agent uses for communication with other processes.
 	SSHAuthSock, err := sshAuthSock()
 	if err != nil {

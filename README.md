@@ -34,7 +34,7 @@ func main() {
 	config.SetPasswordAuth("u01", "password")
 
 	// Key auth in same config. Auth will try all methods provided before failing.
-	err := config.SetPrivateKeyAuth("/home/u01/.ssh/id_rsa", "")
+	err := config.SetPrivateKeyAuth("~/.ssh/id_rsa", "")
 	if err != nil {
 		panic(err)
 	}
@@ -118,6 +118,6 @@ if NumberOfStreamingHostsCompleted == len(cfg.Hosts) {
 }
 ```
 
-Ultimately, the concurrency model used to read from the results channel is the responsibility of those using this package. An example of
-how this might be achieved can be found in the https://github.com/discoriver/omnivore package, which is currently in development.
+Right now, the concurrency model used to read from the results channel is the responsibility of those using this package. An example of
+how this might be achieved can be found in the https://github.com/DiscoRiver/omnivore/tree/main/internal/ossh package, which is currently in development.
 
