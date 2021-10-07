@@ -1,6 +1,8 @@
 package massh
 
 import (
+	"bytes"
+	"fmt"
 	"golang.org/x/crypto/ssh"
 	"strings"
 	"sync"
@@ -86,6 +88,71 @@ func TestSshCommandStream(t *testing.T) {
 
 				return
 			}
+		}
+	}
+}
+
+// Test for bugs in lots of lines.
+func TestSshCommandStreamBigData(t *testing.T) {
+	NumberOfStreamingHostsCompleted = 0
+
+	testConfig.Job = &Job{
+		Command: "cat /var/log/",
+	}
+
+	if err := testConfig.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
+
+	resChan := make(chan Result)
+
+	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
+	err := testConfig.Stream(resChan)
+	if err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
+
+	var wg sync.WaitGroup
+	// This can probably be cleaner. We're hindered somewhat, I think, by reading a channel from a channel.
+	for {
+		select {
+		case result := <-resChan:
+			wg.Add(1)
+			go func() {
+				if result.Error != nil {
+					t.Logf("Unexpected error in stream test for host %s: %s", result.Host, result.Error)
+					t.Fail()
+
+					wg.Done()
+				} else {
+					b := readStreamBigData(result, &wg, t)
+					fmt.Print(string(b))
+				}
+			}()
+		default:
+			if NumberOfStreamingHostsCompleted == len(testConfig.Hosts) {
+				// We want to wait for all goroutines to complete before we declare that the work is finished, as
+				// it's possible for us to execute this code before the gofunc above has completed if left unchecked.
+				wg.Wait()
+
+				return
+			}
+		}
+	}
+}
+
+func readStreamBigData(res Result, wg *sync.WaitGroup, t *testing.T) []byte {
+	defer wg.Done()
+	var byt bytes.Buffer
+
+	for {
+		select {
+		case d := <-res.StdOutStream:
+			byt.Write(d)
+		case <-res.DoneChannel:
+			return byt.Bytes()
 		}
 	}
 }
