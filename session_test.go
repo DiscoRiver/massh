@@ -97,7 +97,7 @@ func TestSshCommandStreamBigData(t *testing.T) {
 	NumberOfStreamingHostsCompleted = 0
 
 	testConfig.Job = &Job{
-		Command: "cat /var/log/",
+		Command: "cat /var/log/auth.log",
 	}
 
 	if err := testConfig.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
