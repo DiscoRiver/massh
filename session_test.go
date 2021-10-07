@@ -2,7 +2,6 @@ package massh
 
 import (
 	"bytes"
-	"fmt"
 	"golang.org/x/crypto/ssh"
 	"strings"
 	"sync"
@@ -94,6 +93,7 @@ func TestSshCommandStream(t *testing.T) {
 
 // Test for bugs in lots of lines.
 func TestSshCommandStreamBigData(t *testing.T) {
+	defer func() {testConfig.Job = testJob}()
 	NumberOfStreamingHostsCompleted = 0
 
 	testConfig.Job = &Job{
@@ -128,7 +128,7 @@ func TestSshCommandStreamBigData(t *testing.T) {
 					wg.Done()
 				} else {
 					b := readStreamBigData(result, &wg, t)
-					fmt.Print(string(b))
+					t.Log(string(b))
 				}
 			}()
 		default:
