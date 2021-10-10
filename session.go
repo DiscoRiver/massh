@@ -174,9 +174,7 @@ func readToBytesChannel(reader io.Reader, stream chan []byte, r Result, wg *sync
 			}
 		}
 
-		if line != nil {
-			stream <- line
-		}
+		stream <- line
 
 	}
 }
