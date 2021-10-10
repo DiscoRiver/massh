@@ -1,7 +1,6 @@
 package massh
 
 import (
-	"bytes"
 	"golang.org/x/crypto/ssh"
 	"strings"
 	"sync"
@@ -72,11 +71,7 @@ func TestSshCommandStream(t *testing.T) {
 
 					wg.Done()
 				} else {
-					err := readStream(result, &wg, t)
-					if err != nil {
-						t.Log(err)
-						t.FailNow()
-					}
+					readStream(result, &wg, t)
 				}
 			}()
 		default:
@@ -96,13 +91,13 @@ func TestSshCommandStreamBigData(t *testing.T) {
 	defer func() {testConfig.Job = testJob}()
 	NumberOfStreamingHostsCompleted = 0
 
-	testConfig.Job = &Job{
-		Command: "cat /var/log/auth.log",
-	}
-
 	if err := testConfig.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
 		t.Log(err)
 		t.FailNow()
+	}
+
+	testConfig.Job = &Job{
+		Command: "cat /var/log/dmesg",
 	}
 
 	resChan := make(chan Result)
@@ -127,8 +122,7 @@ func TestSshCommandStreamBigData(t *testing.T) {
 
 					wg.Done()
 				} else {
-					b := readStreamBigData(result, &wg, t)
-					t.Log(string(b))
+					readStream(result, &wg, t)
 				}
 			}()
 		default:
@@ -143,28 +137,11 @@ func TestSshCommandStreamBigData(t *testing.T) {
 	}
 }
 
-func readStreamBigData(res Result, wg *sync.WaitGroup, t *testing.T) []byte {
-	defer wg.Done()
-	var byt bytes.Buffer
-
+func readStream(res Result, wg *sync.WaitGroup, t *testing.T) {
 	for {
 		select {
 		case d := <-res.StdOutStream:
-			byt.Write(d)
-		case <-res.DoneChannel:
-			return byt.Bytes()
-		}
-	}
-}
-
-func readStream(res Result, wg *sync.WaitGroup, t *testing.T) error {
-	for {
-		select {
-		case d := <-res.StdOutStream:
-			if !strings.Contains(string(d), "Hello, World") {
-				t.Logf("Expected output from stream test not received from host %s: %s", res.Host, d)
-				t.Fail()
-			}
+			t.Log(string(d))
 		case <-res.DoneChannel:
 			wg.Done()
 		}
@@ -299,11 +276,7 @@ func TestSshCommandStreamWithJobStack(t *testing.T) {
 
 					wg.Done()
 				} else {
-					err := readStream(result, &wg, t)
-					if err != nil {
-						t.Log(err)
-						t.FailNow()
-					}
+					readStream(result, &wg, t)
 				}
 			}()
 		default:
