@@ -1,6 +1,7 @@
 package massh
 
 import (
+	"fmt"
 	"golang.org/x/crypto/ssh"
 	"strings"
 	"sync"
@@ -97,7 +98,7 @@ func TestSshCommandStreamBigData(t *testing.T) {
 	}
 
 	testConfig.Job = &Job{
-		Command: "cat /var/log/dmesg",
+		Command: "cat /var/log/auth.log",
 	}
 
 	resChan := make(chan Result)
@@ -141,7 +142,7 @@ func readStream(res Result, wg *sync.WaitGroup, t *testing.T) {
 	for {
 		select {
 		case d := <-res.StdOutStream:
-			t.Log(string(d))
+			fmt.Println(string(d))
 		case <-res.DoneChannel:
 			wg.Done()
 		}
