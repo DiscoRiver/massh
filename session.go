@@ -161,10 +161,10 @@ func sshCommandStream(host string, config *Config, resultChannel chan Result) {
 func readToBytesChannel(reader io.Reader, stream chan []byte, r Result, wg *sync.WaitGroup) {
 	defer func(){ wg.Done() }()
 
-	buf := bufio.NewReader(reader)
+	rdr := bufio.NewReader(reader)
 
 	for {
-		line, err := buf.ReadBytes('\n')
+		line, err := rdr.ReadBytes('\n')
 		if err != nil {
 			if err == io.EOF {
 				return
@@ -173,9 +173,7 @@ func readToBytesChannel(reader io.Reader, stream chan []byte, r Result, wg *sync
 				return
 			}
 		}
-
 		stream <- line
-
 	}
 }
 

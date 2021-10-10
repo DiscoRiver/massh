@@ -57,10 +57,7 @@ func main() {
 					fmt.Printf("%s: %s\n", result.Host, result.Error)
 					wg.Done()
 				} else {
-					err := readStream(result, &wg)
-					if err != nil {
-						panic(err)
-					}
+					readStream(result, &wg)
 				}
 			}()
 		default:
