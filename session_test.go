@@ -142,7 +142,7 @@ func readStream(res Result, wg *sync.WaitGroup, t *testing.T) {
 	for {
 		select {
 		case d := <-res.StdOutStream:
-			fmt.Println(string(d))
+			fmt.Print(string(d))
 		case <-res.DoneChannel:
 			wg.Done()
 		}
