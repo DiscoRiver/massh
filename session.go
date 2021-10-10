@@ -1,9 +1,11 @@
 package massh
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
+	"sync"
 )
 
 var (
@@ -133,8 +135,12 @@ func sshCommandStream(host string, config *Config, resultChannel chan Result) {
 	// Reading from our pipes as they're populated, and redirecting bytes to our stdout and stderr channels in Result.
 	//
 	// We're doing this before we start the ssh task so we can start churning through output as soon as it starts.
-	go readToBytesChannel(StdOutPipe, r.StdOutStream, r)
-	go readToBytesChannel(StdErrPipe, r.StdErrStream, r)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		readToBytesChannel(StdOutPipe, r.StdOutStream, r, &wg)
+		readToBytesChannel(StdErrPipe, r.StdErrStream, r, &wg)
+	}()
 
 	resultChannel <- r
 
@@ -145,21 +151,29 @@ func sshCommandStream(host string, config *Config, resultChannel chan Result) {
 	}
 
 	// Wait for the command to exit only after we've initiated all the output channels
+	wg.Wait()
 	session.Wait()
 
 	NumberOfStreamingHostsCompleted++
 }
 
 // readToBytesChannel reads from io.Reader and directs the data to a byte slice channel for streaming.
-func readToBytesChannel(reader io.Reader, stream chan []byte, r Result) {
-	var data = make([]byte, 1024)
+func readToBytesChannel(reader io.Reader, stream chan []byte, r Result, wg *sync.WaitGroup) {
+	defer func(){ wg.Done() }()
+
+	rdr := bufio.NewReader(reader)
+
 	for {
-		n, err := reader.Read(data)
+		line, err := rdr.ReadBytes('\n')
 		if err != nil {
-			r.Error = fmt.Errorf("couldn't read content to stream channel: %s", err)
-			return
+			if err == io.EOF {
+				return
+			} else {
+				r.Error = fmt.Errorf("couldn't read content to stream channel: %s", err)
+				return
+			}
 		}
-		stream <- data[:n]
+		stream <- line
 	}
 }
 
