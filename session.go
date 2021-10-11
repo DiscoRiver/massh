@@ -55,13 +55,12 @@ func sshCommand(host string, config *Config) Result {
 	defer session.Close()
 
 	// Get job string
-	job := getJob(session, config.Job)
-	r.Job = job
+	r.Job = getJob(session, config.Job)
 
 	// run the job
 	var b bytes.Buffer
 	session.Stdout = &b
-	if err := runJob(session, job); err != nil {
+	if err := runJob(session, r.Job); err != nil {
 		r.Error = err
 		return r
 	}
@@ -101,8 +100,7 @@ func sshCommandStream(host string, config *Config, resultChannel chan Result) {
 	defer session.Close()
 
 	// Get job string
-	job := getJob(session, config.Job)
-	r.Job = job
+	r.Job = getJob(session, config.Job)
 
 	// Set the stdout pipe which we will read/redirect later to our stdout channel
 	StdOutPipe, err := session.StdoutPipe()
@@ -111,8 +109,7 @@ func sshCommandStream(host string, config *Config, resultChannel chan Result) {
 		return
 	}
 	// Channel used for streaming stdout
-	stdout := make(chan []byte)
-	r.StdOutStream = stdout
+	r.StdOutStream = make(chan []byte)
 
 	// Set the stderr pipe which we will read/redirect later to our stderr channel
 	StdErrPipe, err := session.StderrPipe()
@@ -121,16 +118,14 @@ func sshCommandStream(host string, config *Config, resultChannel chan Result) {
 		return
 	}
 	// Channel used for streaming stderr
-	stderr := make(chan []byte)
-	r.StdErrStream = stderr
+	r.StdErrStream = make(chan []byte)
 
 	// Set up a special channel to report completion of the ssh task. This is easier than handling exit codes etc.
 	//
 	// Using struct{} for memory saving as it takes up 0 bytes; bool take up 1, and we don't actually care
 	// what is written to the done channel, just that "something" is read from it so that we know the
 	// command exited.
-	done := make(chan struct{})
-	r.DoneChannel = done
+	r.DoneChannel = make(chan struct{})
 
 	// Reading from our pipes as they're populated, and redirecting bytes to our stdout and stderr channels in Result.
 	//
@@ -145,7 +140,7 @@ func sshCommandStream(host string, config *Config, resultChannel chan Result) {
 	resultChannel <- r
 
 	// Start the job immediately, but don't wait for the command to exit
-	if err := startJob(session, job); err != nil {
+	if err := startJob(session, r.Job); err != nil {
 		r.Error = fmt.Errorf("could not start job: %s", err)
 		return
 	}
