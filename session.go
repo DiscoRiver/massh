@@ -258,7 +258,7 @@ func run(c *Config) (res []Result) {
 	}
 	close(hosts)
 
-	for r := 0; r < len(c.Hosts); r++ {
+	for r := 0; r < resultChanLength; r++ {
 		res = append(res, <-results)
 	}
 
