@@ -237,9 +237,16 @@ func runStream(c *Config, rs chan Result) {
 // run sets up goroutines, worker pool, and returns the command results for all hosts as a slice of Result. This can cause
 // excessive memory usage if returning a large amount of data for a large number of hosts.
 func run(c *Config) (res []Result) {
+	// Channels length is always how many hosts we have multiplied by the number of jobs we're running.
+	var resultChanLength int
+	if c.JobStack != nil {
+		resultChanLength = len(c.Hosts) * len(*c.JobStack)
+	} else {
+		resultChanLength = len(c.Hosts)
+	}
 	// Channels length is always how many hosts we have
 	hosts := make(chan string, len(c.Hosts))
-	results := make(chan Result, len(c.Hosts))
+	results := make(chan Result, resultChanLength)
 
 	// Set up a worker pool that will accept hosts on the hosts channel.
 	for i := 0; i < c.WorkerPool; i++ {
@@ -251,7 +258,7 @@ func run(c *Config) (res []Result) {
 	}
 	close(hosts)
 
-	for r := 0; r < len(c.Hosts); r++ {
+	for r := 0; r < resultChanLength; r++ {
 		res = append(res, <-results)
 	}
 
