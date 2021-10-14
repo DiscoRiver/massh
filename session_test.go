@@ -212,7 +212,7 @@ func TestBulkWithJobStack(t *testing.T) {
 	}()
 
 	// Add our stack
-	testConfig.JobStack = &[]Job{*testJob, *testJob2}
+	testConfig.JobStack = &[]Job{*testJob, *testJob2, *testJob3}
 
 	if err := testConfig.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
 		t.Log(err)
