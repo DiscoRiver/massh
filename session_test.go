@@ -229,8 +229,9 @@ func TestBulkWithJobStack(t *testing.T) {
 	for i := range res {
 		if !strings.Contains(string(res[i].Output), "Hello, World") {
 			t.Logf("Expected output from bulk test not received from host %s: \n \t Output: %s \n \t Error: %s\n", res[i].Host, res[i].Output, res[i].Error)
-			t.Fail()
+			t.FailNow()
 		}
+		fmt.Println(res[i].Host, ": ", string(res[i].Output))
 	}
 }
 
