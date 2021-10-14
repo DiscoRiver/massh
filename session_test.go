@@ -226,12 +226,18 @@ func TestBulkWithJobStack(t *testing.T) {
 		t.FailNow()
 	}
 
+	expectedLength := len(*testConfig.JobStack)*len(testConfig.Hosts)
+	if len(res) != expectedLength {
+		t.Logf("Expected %d results, got %d", expectedLength, len(res))
+		t.FailNow()
+	}
+
 	for i := range res {
 		if !strings.Contains(string(res[i].Output), "Hello, World") {
 			t.Logf("Expected output from bulk test not received from host %s: \n \t Output: %s \n \t Error: %s\n", res[i].Host, res[i].Output, res[i].Error)
 			t.FailNow()
 		}
-		fmt.Println(res[i].Host, ": ", string(res[i].Output))
+		fmt.Printf("%s: %s", res[i].Host, res[i].Output)
 	}
 }
 
