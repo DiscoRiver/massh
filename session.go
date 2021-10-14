@@ -71,61 +71,61 @@ func sshCommand(host string, config *Config) Result {
 }
 
 func sshCommandStream(host string, config *Config, resultChannel chan Result) {
-	var r Result
+	var streamResult Result
 	// This is needed so we don't need to write to the channel before every return statement when erroring..
 	defer func() {
-		if r.Error != nil {
-			resultChannel <- r
+		if streamResult.Error != nil {
+			resultChannel <- streamResult
 			NumberOfStreamingHostsCompleted++
 		} else {
-			r.DoneChannel <- struct{}{}
+			streamResult.DoneChannel <- struct{}{}
 		}
 	}()
 
 	// Never send to the result channel with a blank host.
-	r.Host = host
+	streamResult.Host = host
 
 	client, err := generateSSHClientWithPotentialBastion(host, config)
 	if err != nil {
-		r.Error = err
+		streamResult.Error = err
 		return
 	}
 	defer client.Close()
 
 	session, err := newClientSession(client)
 	if err != nil {
-		r.Error = fmt.Errorf("failed to create session: %s", err)
+		streamResult.Error = fmt.Errorf("failed to create session: %s", err)
 		return
 	}
 	defer session.Close()
 
 	// Get job string
-	r.Job = getJob(session, config.Job)
+	streamResult.Job = getJob(session, config.Job)
 
 	// Set the stdout pipe which we will read/redirect later to our stdout channel
 	StdOutPipe, err := session.StdoutPipe()
 	if err != nil {
-		r.Error = fmt.Errorf("could not set StdOutPipe: %s", err)
+		streamResult.Error = fmt.Errorf("could not set StdOutPipe: %s", err)
 		return
 	}
 	// Channel used for streaming stdout
-	r.StdOutStream = make(chan []byte)
+	streamResult.StdOutStream = make(chan []byte)
 
 	// Set the stderr pipe which we will read/redirect later to our stderr channel
 	StdErrPipe, err := session.StderrPipe()
 	if err != nil {
-		r.Error = fmt.Errorf("could not set StdOutPipe: %s", err)
+		streamResult.Error = fmt.Errorf("could not set StdOutPipe: %s", err)
 		return
 	}
 	// Channel used for streaming stderr
-	r.StdErrStream = make(chan []byte)
+	streamResult.StdErrStream = make(chan []byte)
 
 	// Set up a special channel to report completion of the ssh task. This is easier than handling exit codes etc.
 	//
 	// Using struct{} for memory saving as it takes up 0 bytes; bool take up 1, and we don't actually care
 	// what is written to the done channel, just that "something" is read from it so that we know the
 	// command exited.
-	r.DoneChannel = make(chan struct{})
+	streamResult.DoneChannel = make(chan struct{})
 
 	// Reading from our pipes as they're populated, and redirecting bytes to our stdout and stderr channels in Result.
 	//
@@ -133,15 +133,15 @@ func sshCommandStream(host string, config *Config, resultChannel chan Result) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		readToBytesChannel(StdOutPipe, r.StdOutStream, r, &wg)
-		readToBytesChannel(StdErrPipe, r.StdErrStream, r, &wg)
+		readToBytesChannel(StdOutPipe, streamResult.StdOutStream, streamResult, &wg)
+		readToBytesChannel(StdErrPipe, streamResult.StdErrStream, streamResult, &wg)
 	}()
 
-	resultChannel <- r
+	resultChannel <- streamResult
 
 	// Start the job immediately, but don't wait for the command to exit
-	if err := startJob(session, r.Job); err != nil {
-		r.Error = fmt.Errorf("could not start job: %s", err)
+	if err := startJob(session, streamResult.Job); err != nil {
+		streamResult.Error = fmt.Errorf("could not start job: %s", err)
 		return
 	}
 
@@ -174,6 +174,10 @@ func readToBytesChannel(reader io.Reader, stream chan []byte, r Result, wg *sync
 
 // worker invokes sshCommand for each host in the channel
 func worker(hosts <-chan string, results chan<- Result, config *Config, resChan chan Result) {
+	// This check to determine Run vs. Stream is safe because massh.Config.Stream() will not allow work to be done if it's channel
+	// parameter is nil, so we only get a nil resChan when using massh.Config.Run().
+	//
+	// TODO: Make the handling of a JobStack more elegant.
 	if resChan == nil {
 		for host := range hosts {
 			cfg := *config
@@ -203,7 +207,7 @@ func worker(hosts <-chan string, results chan<- Result, config *Config, resChan 
 	}
 }
 
-// runStream is mostly the same as run, except it direct the results to a channel so they can be processed
+// runStream is mostly the same as run, except it directs the results to a channel so they can be processed
 // before the command has completed executing (i.e streaming the stdout and stderr as it runs).
 func runStream(c *Config, rs chan Result) {
 	// Channels length is always how many hosts we have multiplied by the number of jobs we're running.
@@ -221,7 +225,7 @@ func runStream(c *Config, rs chan Result) {
 		go worker(hosts, results, c, rs)
 	}
 
-	// This is what actually triggers the worker(s) to trigger. Each workers takes a host, and when it becomes
+	// This is what actually triggers the worker(s). Each workers takes a host, and when it becomes
 	// available again, it will take another host as long as there are host to be received.
 	for k := range c.Hosts {
 		hosts <- k // send each host to the channel
@@ -230,7 +234,8 @@ func runStream(c *Config, rs chan Result) {
 	close(hosts)
 }
 
-// run sets up goroutines, worker pool, and returns the command results.
+// run sets up goroutines, worker pool, and returns the command results for all hosts as a slice of Result. This can cause
+// excessive memory usage if returning a large amount of data for a large number of hosts.
 func run(c *Config) (res []Result) {
 	// Channels length is always how many hosts we have
 	hosts := make(chan string, len(c.Hosts))
