@@ -3,11 +3,13 @@
 [![Go Test](https://github.com/DiscoRiver/massh/actions/workflows/go-test.yml/badge.svg)](https://github.com/DiscoRiver/massh/actions/workflows/go-test.yml) [![Go Report Card](https://goreportcard.com/badge/github.com/DiscoRiver/massh)](https://goreportcard.com/report/github.com/DiscoRiver/massh)  ![Go Report Card](https://img.shields.io/github/license/DiscoRiver/massh) [![Go Doc](https://img.shields.io/badge/GoDoc-Available-informational)](https://godoc.org/github.com/DiscoRiver/massh)
 
 ## Description
-Go package for running Linux distributed shell commands via SSH. 
+Go package for streaming Linux distributed shell commands via SSH. 
+
+What makes Massh special is it's ability to stream & process output concurrently. See `_examples/example_streaming` for some sample code.
 
 ## Contribute
 
-A lot of my focus so far as been on the streaming aspect of this library, which means some updates to `Config` were done with haste, and as an extension associated checks may have suffered. Therefore, any contributions/improvements are welcome within the scope of the package. Open an issue and let's discuss!
+Have a question, idea, or something you think can be improved? Open an issue or PR and let's discuss it!
 
 ## Example:
 
