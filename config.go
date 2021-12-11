@@ -26,13 +26,6 @@ type Config struct {
 	BastionHostSSHConfig *ssh.ClientConfig
 }
 
-// Job is a single remote task config. For script files, use Job.SetLocalScript().
-type Job struct {
-	Command    string
-	Script     []byte
-	ScriptArgs string
-}
-
 // NewConfig initialises a new massh.Config.
 func NewConfig() *Config {
 	c := &Config{
@@ -173,25 +166,8 @@ func (c *Config) SetPrivateKeyAuth(PrivateKeyFile string, PrivateKeyPassphrase s
 	return nil
 }
 
-// SetCommand sets the Command value in Job. This is the Command executed over SSH to all hosts.
-func (j *Job) SetCommand(command string) {
-	j.Command = command
-}
-
 // SetPasswordAuth sets ssh password from provided byte slice (read from terminal)
 func (c *Config) SetPasswordAuth(username string, password string) {
 	c.SSHConfig.User = username
 	c.SSHConfig.Auth = append(c.SSHConfig.Auth, ssh.Password(password))
-}
-
-// SetLocalScript reads a script file contents into the Job config.
-func (j *Job) SetLocalScript(filename string, args string) error {
-	var err error
-	j.Script, err = ioutil.ReadFile(filename)
-	if err != nil {
-		return fmt.Errorf("failed to read script file")
-	}
-	j.ScriptArgs = args
-
-	return nil
 }

@@ -1,18 +1,30 @@
 package massh
 
 import (
-	"bytes"
 	"fmt"
-	"golang.org/x/crypto/ssh"
+	"io/ioutil"
 )
 
-// getJob determines the type of job and returns the command string
-func getJob(s *ssh.Session, j *Job) string {
-	// Set up remote script
-	if j.Script != nil {
-		s.Stdin = bytes.NewReader(j.Script)
-		return fmt.Sprintf("cat > outfile.sh && chmod +x ./outfile.sh && ./outfile.sh %s && rm ./outfile.sh", j.ScriptArgs)
-	}
+// Job is a single remote task config. For script files, use Job.SetLocalScript().
+type Job struct {
+	Command    string
+	Script     []byte
+	ScriptArgs string
+}
 
-	return j.Command
+// SetCommand sets the Command value in Job. This is the Command executed over SSH to all hosts.
+func (j *Job) SetCommand(command string) {
+	j.Command = command
+}
+
+// SetLocalScript reads a script file contents into the Job config.
+func (j *Job) SetLocalScript(filename string, args string) error {
+	var err error
+	j.Script, err = ioutil.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to read script file")
+	}
+	j.ScriptArgs = args
+
+	return nil
 }
