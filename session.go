@@ -34,12 +34,12 @@ type Result struct {
 	DoneChannel chan struct{}
 }
 
-// getJob determines the type of job and returns the command string
+// getJob determines the type of job and returns the command string. If type is a local script, then stdin will be populated with the script data and sent/executed on the remote machine.
 func getJob(s *ssh.Session, j *Job) string {
 	// Set up remote script
 	if j.Script != nil {
-		s.Stdin = bytes.NewReader(j.Script)
-		return fmt.Sprintf("cat > outfile.sh && chmod +x ./outfile.sh && ./outfile.sh %s && rm ./outfile.sh", j.ScriptArgs)
+		j.Script.prepare(s)
+		return j.Script.getPreparedCommandString()
 	}
 
 	return j.Command
@@ -166,7 +166,7 @@ func sshCommandStream(host string, config *Config, resultChannel chan Result) {
 
 // readToBytesChannel reads from io.Reader and directs the data to a byte slice channel for streaming.
 func readToBytesChannel(reader io.Reader, stream chan []byte, r Result, wg *sync.WaitGroup) {
-	defer func(){ wg.Done() }()
+	defer func() { wg.Done() }()
 
 	rdr := bufio.NewReader(reader)
 
@@ -192,12 +192,15 @@ func worker(hosts <-chan string, results chan<- Result, config *Config, resChan 
 	// TODO: Make the handling of a JobStack more elegant.
 	if resChan == nil {
 		for host := range hosts {
-			cfg := *config
-			if cfg.JobStack != nil {
-				for i := range *cfg.JobStack {
-					j := (*cfg.JobStack)[i]
+			if config.JobStack != nil {
+				for i := range *config.JobStack {
+					// Cfg is a copy of config, without job pointers. This is needed to separate the jobstack.
+					cfg := copyConfigNoJobs(config)
+
+					j := (*config.JobStack)[i]
 					cfg.Job = &j
-					results <- sshCommand(host, &cfg)
+
+					results <- sshCommand(host, cfg)
 				}
 			} else {
 				results <- sshCommand(host, config)
@@ -205,18 +208,32 @@ func worker(hosts <-chan string, results chan<- Result, config *Config, resChan 
 		}
 	} else {
 		for host := range hosts {
-			cfg := *config
-			if cfg.JobStack != nil {
-				for i := range *cfg.JobStack {
-					j := (*cfg.JobStack)[i]
+			if config.JobStack != nil {
+				for i := range *config.JobStack {
+					// Cfg is a copy of config, without job pointers. This is needed to separate the jobstack.
+					cfg := copyConfigNoJobs(config)
+
+					j := (*config.JobStack)[i]
 					cfg.Job = &j
-					go sshCommandStream(host, &cfg, resChan)
+
+					go sshCommandStream(host, cfg, resChan)
 				}
 			} else {
 				go sshCommandStream(host, config, resChan)
 			}
 		}
 	}
+}
+
+func copyConfigNoJobs(config *Config) *Config {
+	cfg := NewConfig()
+	cfg.Hosts = config.Hosts
+	cfg.SSHConfig = config.SSHConfig
+	cfg.BastionHost = config.BastionHost
+	cfg.BastionHostSSHConfig = config.BastionHostSSHConfig
+	cfg.WorkerPool = config.WorkerPool
+
+	return cfg
 }
 
 // runStream is mostly the same as run, except it directs the results to a channel so they can be processed

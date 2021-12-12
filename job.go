@@ -1,15 +1,9 @@
 package massh
 
-import (
-	"fmt"
-	"io/ioutil"
-)
-
 // Job is a single remote task config. For script files, use Job.SetLocalScript().
 type Job struct {
-	Command    string
-	Script     []byte
-	ScriptArgs string
+	Command string
+	Script  script
 }
 
 // SetCommand sets the Command value in Job. This is the Command executed over SSH to all hosts.
@@ -17,14 +11,13 @@ func (j *Job) SetCommand(command string) {
 	j.Command = command
 }
 
-// SetLocalScript reads a script file contents into the Job config.
-func (j *Job) SetLocalScript(filename string, args string) error {
-	var err error
-	j.Script, err = ioutil.ReadFile(filename)
+func (j *Job) SetScript(filePath string, args ...string) error {
+	s, err := newScript(filePath, args...)
 	if err != nil {
-		return fmt.Errorf("failed to read script file")
+		return err
 	}
-	j.ScriptArgs = args
+
+	j.Script = s
 
 	return nil
 }
