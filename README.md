@@ -30,7 +30,7 @@ func main() {
 		Command: "echo hello world",
 	}
 
-	config.SetHosts([]string{"192.168.1.130", "192.168.1.125"})
+	config.SetHosts([]string{"192.168.1.118"})
 
 	// Password auth
 	config.SetPasswordAuth("u01", "password")
@@ -54,12 +54,12 @@ func main() {
 	}
 
 	for i := range res {
-		fmt.Printf("%s:\n \t OUT: %s \t ERR: %s\n", res[i].Host, res[i].Output, res[i].Error)
+		fmt.Printf("%s:\n \t OUT: %s \t ERR: %v\n", res[i].Host, res[i].Output, res[i].Error)
 	}
 }
 ```
 
-More examples available in the examples directory.
+More examples, including this one, are available in the examples directory.
 
 ## Usage:
 Get the massh package;
