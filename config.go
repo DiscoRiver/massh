@@ -11,19 +11,23 @@ import (
 
 // Config is a config implementation for distributed SSH commands
 type Config struct {
-	Hosts       map[string]struct{}
-	SSHConfig   *ssh.ClientConfig
+	Hosts     map[string]struct{}
+	SSHConfig *ssh.ClientConfig
 
 	// Jobs to execute, config will error if both are set
-	Job         *Job
-	JobStack    *[]Job
+	Job      *Job
+	JobStack *[]Job
 
 	// Number of concurrent workers
-	WorkerPool  int
+	WorkerPool int
 
 	BastionHost string
 	// BastionHost's SSH config. If nil, Bastion will use SSHConfig instead.
 	BastionHostSSHConfig *ssh.ClientConfig
+
+	// Stream-only
+	SlowTimeout     int  // Timeout for delcaring that a host is slow.
+	CancelSlowHosts bool // Not implemented. Automatically cancel hosts that are flagged as slow.
 }
 
 // NewConfig initialises a new massh.Config.
@@ -34,6 +38,16 @@ func NewConfig() *Config {
 		BastionHostSSHConfig: &ssh.ClientConfig{},
 	}
 	return c
+}
+
+// SetSlowTimeout sets the SlowTimeout value for config.
+func (c *Config) SetSlowTimeout(timeout int) {
+	c.SlowTimeout = timeout
+}
+
+// AutoCancelSlowHosts will cancel/terminate slow host sessions.
+func (c *Config) AutoCancelSlowHosts() {
+	c.CancelSlowHosts = true
 }
 
 // SetHosts adds a slice of strings as hosts to config. Removes duplicates.
@@ -86,7 +100,9 @@ func (c *Config) SetSSHHostKeyCallback(callback ssh.HostKeyCallback) {
 	c.SSHConfig.HostKeyCallback = callback
 }
 
-// Run executes the config, return a slice of Results once the command has exited
+// Run executes the config, return a slice of Results once the command has exited on all hosts.
+//
+// This is a rudimentary function, and is not affected by Config.SlowTimeout or Config.CancelSlowHosts. By extension, the Results returned using Run always have an IsSlow value of false.
 func (c *Config) Run() ([]Result, error) {
 	if err := checkJobs(c); err != nil {
 		return nil, err
@@ -112,7 +128,7 @@ cfg.Stream(resultChan)
 	}
 ```
 */
-func (c *Config) Stream(rs chan Result) error {
+func (c *Config) Stream(rs chan *Result) error {
 	if err := checkJobs(c); err != nil {
 		return err
 	}
