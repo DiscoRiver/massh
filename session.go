@@ -7,6 +7,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"io"
 	"sync"
+	"time"
 )
 
 var (
@@ -28,10 +29,10 @@ type Result struct {
 	Error error
 
 	// Stream-specific
+	IsSlow       bool // Activity timeout for StdOut
 	StdOutStream chan []byte
 	StdErrStream chan []byte
-	// Written to when a host completes it's work. This does not indicate that all output from StdOutStream or StdErrStream has been read and/or processed.
-	DoneChannel chan struct{}
+	DoneChannel  chan struct{} // Written to when a host completes work. This does not indicate that all output from StdOutStream or StdErrStream has been read and/or processed.
 }
 
 // getJob determines the type of job and returns the command string. If type is a local script, then stdin will be populated with the script data and sent/executed on the remote machine.
@@ -82,8 +83,8 @@ func sshCommand(host string, config *Config) Result {
 	return r
 }
 
-func sshCommandStream(host string, config *Config, resultChannel chan Result) {
-	var streamResult Result
+func sshCommandStream(host string, config *Config, resultChannel chan *Result) {
+	streamResult := &Result{}
 	// This is needed so we don't need to write to the channel before every return statement when erroring..
 	defer func() {
 		if streamResult.Error != nil {
@@ -145,13 +146,15 @@ func sshCommandStream(host string, config *Config, resultChannel chan Result) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		readToBytesChannel(StdOutPipe, streamResult.StdOutStream, streamResult, &wg)
-		readToBytesChannel(StdErrPipe, streamResult.StdErrStream, streamResult, &wg)
+		readToBytesChannel(StdOutPipe, streamResult.StdOutStream, streamResult, config.SlowTimeout, &wg)
+		readToBytesChannel(StdErrPipe, streamResult.StdErrStream, streamResult, config.SlowTimeout, &wg)
 	}()
 
 	resultChannel <- streamResult
 
-	// Start the job immediately, but don't wait for the command to exit
+	// Start the job immediately, but don't wait for the command to exit.
+	//
+	// Currently, will hang if a host fails to connect, in which case the SSHTimeout value is how long it takes for this func to return.
 	if err := startJob(session, streamResult.Job); err != nil {
 		streamResult.Error = fmt.Errorf("could not start job: %s", err)
 		return
@@ -165,13 +168,27 @@ func sshCommandStream(host string, config *Config, resultChannel chan Result) {
 }
 
 // readToBytesChannel reads from io.Reader and directs the data to a byte slice channel for streaming.
-func readToBytesChannel(reader io.Reader, stream chan []byte, r Result, wg *sync.WaitGroup) {
+func readToBytesChannel(reader io.Reader, stream chan []byte, r *Result, slowTimeout int, wg *sync.WaitGroup) {
 	defer func() { wg.Done() }()
 
-	rdr := bufio.NewReader(reader)
+	slowTimeoutDuration := time.Duration(slowTimeout) * time.Second
+	t := time.NewTimer(slowTimeoutDuration)
 
+	go func() {
+		for {
+			select {
+			case <-t.C:
+				t.Stop()
+				r.IsSlow = true
+				break
+			}
+		}
+	}()
+
+	rdr := bufio.NewReader(reader)
 	for {
 		line, err := rdr.ReadBytes('\n')
+		t.Reset(slowTimeoutDuration)
 		if err != nil {
 			if err == io.EOF {
 				return
@@ -180,12 +197,13 @@ func readToBytesChannel(reader io.Reader, stream chan []byte, r Result, wg *sync
 				return
 			}
 		}
+
 		stream <- line
 	}
 }
 
 // worker invokes sshCommand for each host in the channel
-func worker(hosts <-chan string, results chan<- Result, config *Config, resChan chan Result) {
+func worker(hosts <-chan string, results chan<- Result, config *Config, resChan chan *Result) {
 	// This check to determine Run vs. Stream is safe because massh.Config.Stream() will not allow work to be done if it's channel
 	// parameter is nil, so we only get a nil resChan when using massh.Config.Run().
 	//
@@ -238,7 +256,7 @@ func copyConfigNoJobs(config *Config) *Config {
 
 // runStream is mostly the same as run, except it directs the results to a channel so they can be processed
 // before the command has completed executing (i.e streaming the stdout and stderr as it runs).
-func runStream(c *Config, rs chan Result) {
+func runStream(c *Config, rs chan *Result) {
 	// Channels length is always how many hosts we have multiplied by the number of jobs we're running.
 	var resultChanLength int
 	if c.JobStack != nil {

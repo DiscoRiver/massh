@@ -78,7 +78,7 @@ func generateSSHClientWithPotentialBastion(host string, config *Config) (*ssh.Cl
 	return client, nil
 }
 
-// runJob is ssh.Session.Run
+// runJob is ssh.Session.Run, with an activity timeout
 func runJob(session *ssh.Session, job string) error {
 	if err := session.Run(job); err != nil {
 		return err
