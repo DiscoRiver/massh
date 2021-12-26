@@ -1,3 +1,6 @@
+26/12/2021
+- Added slow host detection. This change BREAKS any call to Config.Stream() in previous versions, as the Result value is now accepted as a pointer.
+
 29/09/2021
 - Minor error and comment updates.
 
