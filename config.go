@@ -27,7 +27,7 @@ type Config struct {
 
 	// Stream-only
 	SlowTimeout     int  // Timeout for delcaring that a host is slow.
-	CancelSlowHosts bool // Automatically cancel hosts that are flagged as slow.
+	CancelSlowHosts bool // Not implemented. Automatically cancel hosts that are flagged as slow.
 }
 
 // NewConfig initialises a new massh.Config.
@@ -40,12 +40,14 @@ func NewConfig() *Config {
 	return c
 }
 
+// SetSlowTimeout sets the SlowTimeout value for config.
 func (c *Config) SetSlowTimeout(timeout int) {
 	c.SlowTimeout = timeout
 }
 
-func (c *Config) AutoCancelSlowHosts(cancel bool) {
-	c.CancelSlowHosts = cancel
+// AutoCancelSlowHosts will cancel/terminate slow host sessions.
+func (c *Config) AutoCancelSlowHosts() {
+	c.CancelSlowHosts = true
 }
 
 // SetHosts adds a slice of strings as hosts to config. Removes duplicates.
@@ -98,9 +100,9 @@ func (c *Config) SetSSHHostKeyCallback(callback ssh.HostKeyCallback) {
 	c.SSHConfig.HostKeyCallback = callback
 }
 
-// Run executes the config, return a slice of Results once the command has exited.
+// Run executes the config, return a slice of Results once the command has exited on all hosts.
 //
-// This is a rudimentary function, and is not affected by SlowTimeout or CancelSlowHosts. By extension, the Results returned using Run always have an IsSlow value of false.
+// This is a rudimentary function, and is not affected by Config.SlowTimeout or Config.CancelSlowHosts. By extension, the Results returned using Run always have an IsSlow value of false.
 func (c *Config) Run() ([]Result, error) {
 	if err := checkJobs(c); err != nil {
 		return nil, err

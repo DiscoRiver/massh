@@ -187,7 +187,7 @@ func readToBytesChannel(reader io.Reader, stream chan []byte, r *Result, slowTim
 
 	rdr := bufio.NewReader(reader)
 	for {
-		line, err := rdr.ReadBytes('\n')
+		line, err := rdr.ReadBytes('\n') // ReadBytes will wait until new line character is read.
 		t.Reset(slowTimeoutDuration)
 		if err != nil {
 			if err == io.EOF {
