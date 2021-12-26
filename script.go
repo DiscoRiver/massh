@@ -27,7 +27,7 @@ type shell struct {
 
 type python struct {
 	bytes []byte
-	args string
+	args  string
 
 	commandString string
 
@@ -51,7 +51,7 @@ func newScript(scriptFile string, args ...string) (script, error) {
 	if strings.HasSuffix(scriptFile, ".sh") {
 		shellScript := &shell{
 			bytes: scriptBytes,
-			args: strings.Join(args, " "),
+			args:  strings.Join(args, " "),
 		}
 		return shellScript, nil
 	}
@@ -59,7 +59,7 @@ func newScript(scriptFile string, args ...string) (script, error) {
 	if strings.HasSuffix(scriptFile, ".py") {
 		pythonScript := &python{
 			bytes: scriptBytes,
-			args: strings.Join(args, " "),
+			args:  strings.Join(args, " "),
 		}
 		return pythonScript, nil
 	}
