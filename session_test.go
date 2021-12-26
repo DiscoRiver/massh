@@ -133,7 +133,7 @@ func TestSshCommandStreamWithSlowHost(t *testing.T) {
 
 					wg.Done()
 				} else {
-					readStream(result, &wg, t)
+					readStreamSlow(result, &wg, t)
 				}
 			}()
 		default:
@@ -198,8 +198,18 @@ func TestSshCommandStreamBigData(t *testing.T) {
 		}
 	}
 }
-
 func readStream(res *Result, wg *sync.WaitGroup, t *testing.T) {
+	for {
+		select {
+		case d := <-res.StdOutStream:
+			fmt.Print(string(d))
+		case <-res.DoneChannel:
+			wg.Done()
+		}
+	}
+}
+
+func readStreamSlow(res *Result, wg *sync.WaitGroup, t *testing.T) {
 	for {
 		select {
 		case d := <-res.StdOutStream:
