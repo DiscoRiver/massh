@@ -244,14 +244,13 @@ func worker(hosts <-chan string, results chan<- Result, config *Config, resChan 
 }
 
 func copyConfigNoJobs(config *Config) *Config {
-	cfg := NewConfig()
-	cfg.Hosts = config.Hosts
-	cfg.SSHConfig = config.SSHConfig
-	cfg.BastionHost = config.BastionHost
-	cfg.BastionHostSSHConfig = config.BastionHostSSHConfig
-	cfg.WorkerPool = config.WorkerPool
-
-	return cfg
+	return &Config{
+		Hosts:                config.Hosts,
+		SSHConfig:            config.SSHConfig,
+		BastionHost:          config.BastionHost,
+		BastionHostSSHConfig: config.BastionHostSSHConfig,
+		WorkerPool:           config.WorkerPool,
+	}
 }
 
 // runStream is mostly the same as run, except it directs the results to a channel so they can be processed

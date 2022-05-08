@@ -32,12 +32,11 @@ type Config struct {
 
 // NewConfig initialises a new massh.Config.
 func NewConfig() *Config {
-	c := &Config{
+	return &Config{
 		Hosts:                map[string]struct{}{},
 		SSHConfig:            &ssh.ClientConfig{},
 		BastionHostSSHConfig: &ssh.ClientConfig{},
 	}
-	return c
 }
 
 // SetSlowTimeout sets the SlowTimeout value for config.
