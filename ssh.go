@@ -94,6 +94,14 @@ func startJob(session *ssh.Session, job string) error {
 	return nil
 }
 
+// startJob is ssh.Session.Close
+func closeSession(session *ssh.Session) error {
+	if err := session.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func sshAuthSock() (ssh.AuthMethod, error) {
 	sshAgent, err := net.Dial("unix", os.Getenv(sshAuthSockEnv))
 	if err != nil {

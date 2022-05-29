@@ -160,6 +160,13 @@ func sshCommandStream(host string, config *Config, resultChannel chan *Result) {
 		return
 	}
 
+	go func() {
+		select {
+		case <-config.Stop:
+			session.Close()
+		}
+	}()
+
 	// Wait for the command to exit only after we've initiated all the output channels
 	wg.Wait()
 	session.Wait()
