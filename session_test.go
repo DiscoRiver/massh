@@ -383,9 +383,10 @@ func TestSSHCommandStreamStop(t *testing.T) {
 		testConfig.Job = jobBackup
 	}()
 
-	// We want a continuous job here
+	// We want a continuous job here, but something that sleeps to ensure we're able to close things correctly.
+	// Experienced some weird behaviour where only high output commands were closing when terminating the session.
 	testConfig.Job = &Job{
-		Command: "hexdump -C /dev/urandom > /dev/null",
+		Command: "while sleep 1; do hexdump -Cn16 /dev/urandom; done",
 	}
 
 	if err := testConfig.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
@@ -405,7 +406,7 @@ func TestSSHCommandStreamStop(t *testing.T) {
 	// Close the session after 3 seconds. I think it's fine to just sleep here.
 	go func() {
 		time.Sleep(3 * time.Second)
-		testConfig.StopAllSessions()
+		testConfig.Stop <- struct{}{}
 	}()
 
 	var wg sync.WaitGroup

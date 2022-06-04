@@ -29,7 +29,8 @@ type Result struct {
 	Error error
 
 	// Stream-specific
-	IsSlow       bool // Activity timeout for StdOut
+	IsSlow bool // Activity timeout for StdOut
+
 	StdOutStream chan []byte
 	StdErrStream chan []byte
 	DoneChannel  chan struct{} // Written to when a host completes work. This does not indicate that all output from StdOutStream or StdErrStream has been read and/or processed.
@@ -160,10 +161,11 @@ func sshCommandStream(host string, config *Config, resultChannel chan *Result) {
 		return
 	}
 
+	// Check to see if we should close. Close the underlying network connection, not the session as it doesn't close the pipes correctly.
 	go func() {
 		select {
 		case <-config.Stop:
-			session.Close()
+			client.Close()
 		}
 	}()
 
