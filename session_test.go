@@ -43,7 +43,6 @@ var (
 		SSHConfig:  testSSHConfig,
 		Job:        testJob,
 		WorkerPool: 10,
-		Stop:       make(chan struct{}, 1),
 	}
 )
 
@@ -383,10 +382,12 @@ func TestSSHCommandStreamStop(t *testing.T) {
 		testConfig.Job = jobBackup
 	}()
 
+	testConfig.Stop = make(chan struct{}, 1)
+
 	// We want a continuous job here, but something that sleeps to ensure we're able to close things correctly.
 	// Experienced some weird behaviour where only high output commands were closing when terminating the session.
 	testConfig.Job = &Job{
-		Command: "while sleep 1; do hexdump -Cn16 /dev/urandom; done",
+		Command: "while sleep 2; do hexdump -Cn16 /dev/urandom; done",
 	}
 
 	if err := testConfig.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
