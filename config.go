@@ -28,6 +28,7 @@ type Config struct {
 	// Stream-only
 	SlowTimeout     int  // Timeout for delcaring that a host is slow.
 	CancelSlowHosts bool // Not implemented. Automatically cancel hosts that are flagged as slow.
+	Stop            chan struct{}
 }
 
 // NewConfig initialises a new massh.Config.
@@ -138,6 +139,10 @@ func (c *Config) Stream(rs chan *Result) error {
 
 	runStream(c, rs)
 	return nil
+}
+
+func (c *Config) StopAllSessions() {
+	c.Stop <- struct{}{}
 }
 
 // CheckSanity ensures config is valid.

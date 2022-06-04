@@ -94,7 +94,7 @@ func TestSshCommandStream(t *testing.T) {
 func TestSshCommandStreamWithSlowHost(t *testing.T) {
 	// Remove current singular job.
 	jobBackup := testConfig.Job
-	testConfig.Job = testJobSlow // sleep is 5 seconds, specify lower value for SlowTimeout
+	testConfig.Job = testJobSlow
 
 	// Specify our slow timeout (remove value at end of func.)
 	testConfig.SlowTimeout = 3
@@ -367,6 +367,71 @@ func TestSshCommandStreamWithJobStack(t *testing.T) {
 				// We want to wait for all goroutines to complete before we declare that the work is finished, as
 				// it's possible for us to execute this code before the gofunc above has completed if left unchecked.
 				wg.Wait()
+				return
+			}
+		}
+	}
+}
+
+func TestSSHCommandStreamStop(t *testing.T) {
+	NumberOfStreamingHostsCompleted = 0
+
+	jobBackup := testConfig.Job
+
+	defer func() {
+		testConfig.Job = jobBackup
+	}()
+
+	testConfig.Stop = make(chan struct{}, 1)
+
+	// We want a continuous job here, but something that sleeps to ensure we're able to close things correctly.
+	// Experienced some weird behaviour where only high output commands were closing when terminating the session.
+	testConfig.Job = &Job{
+		Command: "while sleep 2; do hexdump -Cn16 /dev/urandom; done",
+	}
+
+	if err := testConfig.SetPrivateKeyAuth("~/.ssh/id_rsa", ""); err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
+
+	resChan := make(chan *Result)
+
+	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
+	err := testConfig.Stream(resChan)
+	if err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
+
+	// Close the session after 3 seconds. I think it's fine to just sleep here.
+	go func() {
+		time.Sleep(3 * time.Second)
+		testConfig.Stop <- struct{}{}
+	}()
+
+	var wg sync.WaitGroup
+	// This can probably be cleaner. We're hindered somewhat, I think, by reading a channel from a channel.
+	for {
+		select {
+		case result := <-resChan:
+			wg.Add(1)
+			go func() {
+				if result.Error != nil {
+					t.Logf("Unexpected error in stream test for host %s: %s", result.Host, result.Error)
+					t.Fail()
+
+					wg.Done()
+				} else {
+					readStream(result, &wg, t)
+				}
+			}()
+		default:
+			if NumberOfStreamingHostsCompleted == len(testConfig.Hosts) {
+				// We want to wait for all goroutines to complete before we declare that the work is finished, as
+				// it's possible for us to execute this code before the gofunc above has completed if left unchecked.
+				wg.Wait()
+
 				return
 			}
 		}
