@@ -24,10 +24,10 @@ func main() {
 	cfg := massh.NewConfig()
 	cfg.SSHConfig = sshc
 	cfg.Job = j
-	cfg.WorkerPool = 10
+	cfg.WorkerPool = 1
 	cfg.SetHosts([]string{"192.168.1.118", "192.168.1.119", "192.168.1.120", "192.168.1.129", "192.168.1.212"})
 
-	resChan := make(chan massh.Result)
+	resChan := make(chan *massh.Result)
 
 	// This should be the last responsibility from the massh package. Handling the Result channel is up to the user.
 	err := cfg.Stream(resChan)
@@ -70,7 +70,7 @@ func main() {
 }
 
 // Read Stdout stream
-func readStream(res massh.Result, wg *sync.WaitGroup) error {
+func readStream(res *massh.Result, wg *sync.WaitGroup) error {
 	for {
 		select {
 		case d := <-res.StdOutStream:

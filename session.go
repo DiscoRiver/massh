@@ -243,10 +243,10 @@ func worker(hosts <-chan string, results chan<- Result, config *Config, resChan 
 					j := (*config.JobStack)[i]
 					cfg.Job = &j
 
-					go sshCommandStream(host, cfg, resChan)
+					sshCommandStream(host, cfg, resChan)
 				}
 			} else {
-				go sshCommandStream(host, config, resChan)
+				sshCommandStream(host, config, resChan)
 			}
 		}
 	}
