@@ -382,7 +382,7 @@ func TestSSHCommandStreamStop(t *testing.T) {
 		testConfig.Job = jobBackup
 	}()
 
-	testConfig.Stop = make(chan struct{}, 1)
+	testConfig.Stop = make(chan struct{})
 
 	// We want a continuous job here, but something that sleeps to ensure we're able to close things correctly.
 	// Experienced some weird behaviour where only high output commands were closing when terminating the session.
@@ -406,8 +406,13 @@ func TestSSHCommandStreamStop(t *testing.T) {
 
 	// Close the session after 3 seconds. I think it's fine to just sleep here.
 	go func() {
-		time.Sleep(3 * time.Second)
-		testConfig.Stop <- struct{}{}
+		var count int
+		for {
+			time.Sleep(3 * time.Second)
+
+			t.Logf("Sending stop %d", count)
+			testConfig.Stop <- struct{}{}
+		}
 	}()
 
 	var wg sync.WaitGroup
