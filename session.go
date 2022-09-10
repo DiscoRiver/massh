@@ -59,7 +59,7 @@ func getJob(s *ssh.Session, j *Job) string {
 
 func (r *Result) addMessagef(format string, args ...any) {
 	if shouldLog {
-		r.Messages <- fmt.Sprintf(format, args)
+		r.Messages <- fmt.Sprintf(format, args...)
 	}
 }
 
