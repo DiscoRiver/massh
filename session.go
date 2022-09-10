@@ -13,13 +13,16 @@ import (
 var (
 	// NumberOfStreamingHostsCompleted is incremented when a Result's DoneChannel is written to, indicating a host has completed it's work.
 	NumberOfStreamingHostsCompleted int
+
+	shouldLog bool
 )
 
 const (
 	sshPort = "22"
 )
 
-// Result contains usable output from SSH commands.
+// Result contains usable output from SSH commands. Package errors can be viewed in Error, and the job will be returned
+// is this value is written. Errors that are within the output of the remote host are contained within
 type Result struct {
 	Host   string // Hostname
 	Job    string // The command that was run
@@ -29,6 +32,13 @@ type Result struct {
 	Error error
 
 	// Stream-specific
+
+	/*
+		Messages provides access to non-error package logging from within the running job. Reading is optional, and can be
+		disabled with the Config.Messages field.
+	*/
+	Messages chan string
+
 	IsSlow bool // Activity timeout for StdOut
 
 	StdOutStream chan []byte
@@ -45,6 +55,18 @@ func getJob(s *ssh.Session, j *Job) string {
 	}
 
 	return j.Command
+}
+
+func (r *Result) addMessagef(format string, args ...any) {
+	if shouldLog {
+		r.Messages <- fmt.Sprintf(format, args)
+	}
+}
+
+func (r *Result) addMessage(message string) {
+	if shouldLog {
+		r.Messages <- message
+	}
 }
 
 // sshCommand runs an SSH task and returns Result only when the command has finished executing.
@@ -95,6 +117,8 @@ func sshCommandStream(host string, config *Config, resultChannel chan *Result) {
 			streamResult.DoneChannel <- struct{}{}
 		}
 	}()
+
+	streamResult.addMessagef("Started job for %s", host)
 
 	// Never send to the result channel with a blank host.
 	streamResult.Host = host
@@ -265,6 +289,8 @@ func copyConfigNoJobs(config *Config) *Config {
 // runStream is mostly the same as run, except it directs the results to a channel so they can be processed
 // before the command has completed executing (i.e streaming the stdout and stderr as it runs).
 func runStream(c *Config, rs chan *Result) {
+	shouldLog = c.Messages
+
 	// Channels length is always how many hosts we have multiplied by the number of jobs we're running.
 	var resultChanLength int
 	if c.JobStack != nil {
@@ -292,6 +318,8 @@ func runStream(c *Config, rs chan *Result) {
 // run sets up goroutines, worker pool, and returns the command results for all hosts as a slice of Result. This can cause
 // excessive memory usage if returning a large amount of data for a large number of hosts.
 func run(c *Config) (res []Result) {
+	shouldLog = c.Messages
+
 	// Channels length is always how many hosts we have multiplied by the number of jobs we're running.
 	var resultChanLength int
 	if c.JobStack != nil {

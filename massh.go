@@ -30,6 +30,9 @@ type Config struct {
 	// BastionHost's SSH config. If nil, Bastion will use SSHConfig instead.
 	BastionHostSSHConfig *ssh.ClientConfig
 
+	// Populate package messages
+	Messages bool
+
 	// Stream-only
 	SlowTimeout     int  // Timeout for delcaring that a host is slow.
 	CancelSlowHosts bool // Not implemented. Automatically cancel hosts that are flagged as slow.
@@ -41,6 +44,7 @@ func NewConfig() *Config {
 	return &Config{
 		Hosts:                map[string]struct{}{},
 		SSHConfig:            &ssh.ClientConfig{},
+		Messages:             true,
 		BastionHostSSHConfig: &ssh.ClientConfig{},
 		Stop:                 make(chan struct{}, 1),
 	}
