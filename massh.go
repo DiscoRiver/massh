@@ -31,7 +31,7 @@ type Config struct {
 	BastionHostSSHConfig *ssh.ClientConfig
 
 	// Stream-only
-	SlowTimeout     int  // Timeout for delcaring that a host is slow.
+	SlowTimeout     int  // Timeout for declaring that a host is slow.
 	CancelSlowHosts bool // Not implemented. Automatically cancel hosts that are flagged as slow.
 	Stop            chan struct{}
 }
