@@ -20,6 +20,13 @@ var (
 		Auth:            []ssh.AuthMethod{ssh.Password("broken")},
 		Timeout:         time.Duration(2) * time.Second, // to keep things snappy
 	}
+
+	defaultBastionHop = &SingleClientConnection{
+		Host:      "localhost",
+		Port:      "22",
+		Network:   "tcp",
+		SSHConfig: defaultSSHClientConfig,
+	}
 )
 
 func TestNewSingleClientConnection_Success(t *testing.T) {
@@ -42,4 +49,14 @@ func TestNewSingleClientConnection_Failure(t *testing.T) {
 			conn.sshClient.Close()
 		}
 	}()
+}
+
+func TestNewBastionConnection(t *testing.T) {
+	var bastionRoute = []*SingleClientConnection{defaultBastionHop}
+
+	_, err := NewBastionConnection("localhost", "22", "tcp", defaultSSHClientConfig, bastionRoute)
+	if err != nil {
+		t.Logf("Failed to dial bastion route: %s", err)
+		t.FailNow()
+	}
 }
