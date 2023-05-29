@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"golang.org/x/crypto/ssh"
-	"net"
 )
 
 const (
@@ -133,8 +132,9 @@ type BastionConnection struct {
 	Route []*SingleClientConnection
 
 	// Unexported
-	sshSession *ssh.Session
-	sshClient  *ssh.Client
+	sshSession    *ssh.Session
+	sshClient     *ssh.Client
+	bastionClient *ssh.Client
 }
 
 // NewBastionConnection creates a new BastionConnection by dialing the host through the specified route. Error if session for target host cannot be established.
@@ -148,12 +148,13 @@ func NewBastionConnection(host, port, network string, sshConfig *ssh.ClientConfi
 		Route: route,
 	}
 
-	bastionConn, err := connection.dialBastionRoute()
+	var err error
+	connection.bastionClient, err = connection.dialBastionRoute()
 	if err != nil {
 		return nil, err
 	}
 
-	err = connection.generateClient(bastionConn)
+	err = connection.generateClient()
 	if err != nil {
 		return nil, err
 	}
@@ -170,10 +171,15 @@ func (b *BastionConnection) RunJob() {
 
 }
 
-func (b *BastionConnection) generateClient(bastion net.Conn) error {
-	ncc, chans, reqs, err := ssh.NewClientConn(bastion, formatHostAndPort(b.Host, b.Port), b.SSHConfig)
+func (b *BastionConnection) generateClient() error {
+	remoteHostConn, err := b.bastionClient.Dial(b.Network, formatHostAndPort(b.Host, b.Port))
 	if err != nil {
-		return fmt.Errorf("couldn't initiate host connection from bastion client: %s", err)
+		return fmt.Errorf("unable to create remote host ssh client through bastion: %s", err)
+	}
+
+	ncc, chans, reqs, err := ssh.NewClientConn(remoteHostConn, formatHostAndPort(b.Host, b.Port), b.SSHConfig)
+	if err != nil {
+		return fmt.Errorf("unable to create remote host ssh client through bastion: %s", err)
 	}
 
 	b.sshClient = ssh.NewClient(ncc, chans, reqs)
@@ -194,32 +200,37 @@ func (b *BastionConnection) generateSession() (err error) {
 	return nil
 }
 
-func (b *BastionConnection) dialBastionRoute() (net.Conn, error) {
-	var routeClients []*ssh.Client
+func (b *BastionConnection) dialBastionRoute() (*ssh.Client, error) {
+	if len(b.Route) == 0 {
+		return nil, fmt.Errorf("no bastion route specified")
+	}
 
+	// Handle single bastion simply.
+	if len(b.Route) == 1 {
+		return b.handleSingleBastion()
+	}
+
+	return b.handleMultipleBastion()
+}
+
+func (b *BastionConnection) handleSingleBastion() (*ssh.Client, error) {
+	client, err := ssh.Dial(b.Route[0].Network, formatHostAndPort(b.Route[0].Host, b.Route[0].Port), b.Route[0].SSHConfig)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+func (b *BastionConnection) handleMultipleBastion() (client *ssh.Client, err error) {
 	for i := range b.Route {
-		if len(b.Route) == 1 {
-			client, err := ssh.Dial(b.Route[i].Network, formatHostAndPort(b.Route[i].Host, b.Route[i].Port), b.Route[i].SSHConfig)
+		if i == 0 {
+			client, err = ssh.Dial(b.Route[i].Network, formatHostAndPort(b.Route[i].Host, b.Route[i].Port), b.Route[i].SSHConfig)
 			if err != nil {
 				return nil, fmt.Errorf("unable to connect to bastion route host (%s), HOP %d/%d: %s", b.Route[i].Host, i+1, len(b.Route), err)
 			}
+		} else {
 			// Dial this host using the previous client. Maintain order of the route.
 			conn, err := client.Dial(b.Route[i].Network, formatHostAndPort(b.Route[i].Host, b.Route[i].Port))
-			if err != nil {
-				return nil, fmt.Errorf("unable to connect to bastion route host (%s), HOP %d/%d: %s", b.Route[i].Host, i+1, len(b.Route), err)
-			}
-			return conn, nil
-		}
-
-		if i == 0 {
-			firstClient, err := ssh.Dial(b.Route[i].Network, formatHostAndPort(b.Route[i].Host, b.Route[i].Port), b.Route[i].SSHConfig)
-			if err != nil {
-				return nil, fmt.Errorf("unable to connect to bastion route host (%s), HOP %d/%d: %s", b.Route[i].Host, i+1, len(b.Route), err)
-			}
-			routeClients = append(routeClients, firstClient)
-		} else if i <= len(b.Route)-2 {
-			// Dial this host using the previous client. Maintain order of the route.
-			conn, err := routeClients[i-1].Dial(b.Route[i].Network, formatHostAndPort(b.Route[i].Host, b.Route[i].Port))
 			if err != nil {
 				return nil, fmt.Errorf("unable to connect to bastion route host (%s), HOP %d/%d: %s", b.Route[i].Host, i+1, len(b.Route), err)
 			}
@@ -228,19 +239,12 @@ func (b *BastionConnection) dialBastionRoute() (net.Conn, error) {
 			if err != nil {
 				return nil, fmt.Errorf("unable to connect to bastion route host (%s), HOP %d/%d: %s", b.Route[i].Host, i+1, len(b.Route), err)
 			}
-			routeClients = append(routeClients, ssh.NewClient(ncc, chans, reqs))
-		} else if len(b.Route) > 1 {
-			// Dial this host using the previous client. Maintain order of the route.
-			conn, err := routeClients[i-1].Dial(b.Route[i].Network, formatHostAndPort(b.Route[i].Host, b.Route[i].Port))
-			if err != nil {
-				return nil, fmt.Errorf("unable to connect to bastion route host (%s), HOP %d/%d: %s", b.Route[i].Host, i+1, len(b.Route), err)
-			}
 
-			return conn, nil
+			client = ssh.NewClient(ncc, chans, reqs)
 		}
 	}
 
-	return nil, nil
+	return client, nil
 }
 
 func formatHostAndPort(host, port string) string {
