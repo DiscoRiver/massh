@@ -46,14 +46,9 @@ func NewSingleClientConnection(host, port, network string, sshConfig *ssh.Client
 		SSHConfig: sshConfig,
 	}
 
-	err := connection.generateClient()
+	err := connection.establishConnection()
 	if err != nil {
-		return nil, ErrClientConnectionFailed
-	}
-
-	err = connection.generateSession()
-	if err != nil {
-		return nil, ErrCreateSessionFailed
+		return nil, err
 	}
 
 	return connection, nil
@@ -80,14 +75,9 @@ func (c *SingleClientConnection) Reconnect() error {
 	c.sshClient = nil
 	c.sshSession = nil
 
-	err := c.generateClient()
+	err := c.establishConnection()
 	if err != nil {
-		return ErrClientConnectionFailed
-	}
-
-	err = c.generateSession()
-	if err != nil {
-		return ErrCreateSessionFailed
+		return err
 	}
 
 	return nil
@@ -123,6 +113,21 @@ func (c *SingleClientConnection) generateSession() (err error) {
 	return nil
 }
 
+// establishConnection populates client and session. Error if connection cannot be established to target.
+func (c *SingleClientConnection) establishConnection() error {
+	err := c.generateClient()
+	if err != nil {
+		return ErrClientConnectionFailed
+	}
+
+	err = c.generateSession()
+	if err != nil {
+		return ErrCreateSessionFailed
+	}
+
+	return nil
+}
+
 type BastionConnection struct {
 	Host      string
 	Port      string
@@ -148,18 +153,7 @@ func NewBastionConnection(host, port, network string, sshConfig *ssh.ClientConfi
 		Route: route,
 	}
 
-	var err error
-	connection.bastionClient, err = connection.dialBastionRoute()
-	if err != nil {
-		return nil, err
-	}
-
-	err = connection.generateClient()
-	if err != nil {
-		return nil, err
-	}
-
-	err = connection.generateSession()
+	err := connection.establishConnection()
 	if err != nil {
 		return nil, err
 	}
@@ -167,8 +161,34 @@ func NewBastionConnection(host, port, network string, sshConfig *ssh.ClientConfi
 	return connection, nil
 }
 
-func (b *BastionConnection) RunJob() {
+func (b *BastionConnection) RunJob(job string) error {
+	if err := b.sshSession.Run(job); err != nil {
+		return err
+	}
 
+	return nil
+}
+
+func (b *BastionConnection) StartJob(job string) error {
+	if err := b.sshSession.Start(job); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Reconnect reestablishes the SSH client and session.
+func (b *BastionConnection) Reconnect() error {
+	b.sshClient = nil
+	b.sshSession = nil
+	b.bastionClient = nil
+
+	err := b.establishConnection()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (b *BastionConnection) generateClient() error {
@@ -247,6 +267,29 @@ func (b *BastionConnection) handleMultipleBastion() (client *ssh.Client, err err
 	return client, nil
 }
 
+// establishConnection populates client and session. Error if connection cannot be established to target.
+func (b *BastionConnection) establishConnection() error {
+	var err error
+	b.bastionClient, err = b.dialBastionRoute()
+	if err != nil {
+		return err
+	}
+
+	err = b.generateClient()
+	if err != nil {
+		return err
+	}
+
+	err = b.generateSession()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func formatHostAndPort(host, port string) string {
 	return host + ":" + port
 }
+
+
