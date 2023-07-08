@@ -213,8 +213,8 @@ func readToBytesChannel(reader io.Reader, stream chan []byte, r *Result, slowTim
 
 // worker invokes sshCommand for each host in the channel
 func worker(hosts <-chan string, results chan<- Result, config *Config, resChan chan *Result) {
-	// This check to determine Run vs. Stream is safe because massh.Config.Stream() will not allow work to be done if it's channel
-	// parameter is nil, so we only get a nil resChan when using massh.Config.Run().
+	// This check to determine Run vs. Stream is safe because massh.SSHConfig.Stream() will not allow work to be done if it's channel
+	// parameter is nil, so we only get a nil resChan when using massh.SSHConfig.Run().
 	//
 	// TODO: Make the handling of a JobStack more elegant.
 	if resChan == nil {

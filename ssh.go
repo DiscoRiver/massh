@@ -78,7 +78,7 @@ func generateSSHClientWithPotentialBastion(host string, config *Config) (*ssh.Cl
 	return client, nil
 }
 
-// runJob is ssh.Session.Run
+// runJob is ssh.SSHSession.Run
 func runJob(session *ssh.Session, job string) error {
 	if err := session.Run(job); err != nil {
 		return err
@@ -86,7 +86,7 @@ func runJob(session *ssh.Session, job string) error {
 	return nil
 }
 
-// startJob is ssh.Session.Start
+// startJob is ssh.SSHSession.Start
 func startJob(session *ssh.Session, job string) error {
 	if err := session.Start(job); err != nil {
 		return err
@@ -94,7 +94,7 @@ func startJob(session *ssh.Session, job string) error {
 	return nil
 }
 
-// startJob is ssh.Session.Close
+// startJob is ssh.SSHSession.Close
 func closeSession(session *ssh.Session) error {
 	if err := session.Close(); err != nil {
 		return err
