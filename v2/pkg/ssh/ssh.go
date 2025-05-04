@@ -7,13 +7,10 @@ import (
 )
 
 const (
-	authSockEnv = "SSH_AUTH_SOCK"
-)
-
-var (
-	ErrNilSession             = errors.New("session is nil")
-	ErrCreateSessionFailed    = errors.New("could not create new session")
-	ErrClientConnectionFailed = errors.New("could not establish client connection")
+	authSockEnv               = "SSH_AUTH_SOCK"
+	ErrNilSession             = "session is nil"
+	ErrCreateSessionFailed    = "could not create new session"
+	ErrClientConnectionFailed = "could not establish client connection"
 )
 
 type SSHConnection interface {
@@ -107,7 +104,7 @@ func (c *SingleClientConnection) generateClient() (err error) {
 func (c *SingleClientConnection) generateSession() (err error) {
 	c.sshSession, err = c.sshClient.NewSession()
 	if err != nil {
-		return fmt.Errorf("%s, %s", ErrCreateSessionFailed.Error(), err)
+		return fmt.Errorf("%s, %s", errors.New(ErrCreateSessionFailed).Error(), err)
 	}
 
 	return nil
@@ -117,12 +114,12 @@ func (c *SingleClientConnection) generateSession() (err error) {
 func (c *SingleClientConnection) establishConnection() error {
 	err := c.generateClient()
 	if err != nil {
-		return ErrClientConnectionFailed
+		return errors.New(ErrClientConnectionFailed)
 	}
 
 	err = c.generateSession()
 	if err != nil {
-		return ErrCreateSessionFailed
+		return errors.New(ErrCreateSessionFailed)
 	}
 
 	return nil
@@ -214,7 +211,7 @@ func (b *BastionConnection) generateClient() error {
 func (b *BastionConnection) generateSession() (err error) {
 	b.sshSession, err = b.sshClient.NewSession()
 	if err != nil {
-		return fmt.Errorf("%s, %s", ErrCreateSessionFailed.Error(), err)
+		return fmt.Errorf("%s, %s", errors.New(ErrCreateSessionFailed).Error(), err)
 	}
 
 	return nil
@@ -291,5 +288,3 @@ func (b *BastionConnection) establishConnection() error {
 func formatHostAndPort(host, port string) string {
 	return host + ":" + port
 }
-
-
