@@ -203,6 +203,14 @@ func (b *BastionConnection) Reconnect() error {
 	return nil
 }
 
+func (b *BastionConnection) GetClient() *ssh.Client {
+	return b.sshClient
+}
+
+func (b *BastionConnection) GetSession() *ssh.Session {
+	return b.sshSession
+}
+
 func (b *BastionConnection) generateClient() error {
 	remoteHostConn, err := b.bastionClient.Dial(b.Network, formatHostAndPort(b.Host, b.Port))
 	if err != nil {
@@ -255,21 +263,22 @@ func (b *BastionConnection) handleSingleBastion() (*ssh.Client, error) {
 
 func (b *BastionConnection) handleMultipleBastion() (client *ssh.Client, err error) {
 	for i := range b.Route {
+		currentHop := i + 1
 		if i == 0 {
 			client, err = ssh.Dial(b.Route[i].Network, formatHostAndPort(b.Route[i].Host, b.Route[i].Port), b.Route[i].SSHConfig)
 			if err != nil {
-				return nil, fmt.Errorf("unable to connect to bastion route host (%s), HOP %d/%d: %s", b.Route[i].Host, i+1, len(b.Route), err)
+				return nil, fmt.Errorf("unable to connect to bastion route host (%s), HOP %d/%d: %s", b.Route[i].Host, currentHop, len(b.Route), err)
 			}
 		} else {
-			// Dial this host using the previous client. Maintain order of the route.
+			// Dial this host using the previous client. Maintain the order of the route.
 			conn, err := client.Dial(b.Route[i].Network, formatHostAndPort(b.Route[i].Host, b.Route[i].Port))
 			if err != nil {
-				return nil, fmt.Errorf("unable to connect to bastion route host (%s), HOP %d/%d: %s", b.Route[i].Host, i+1, len(b.Route), err)
+				return nil, fmt.Errorf("unable to connect to bastion route host (%s), HOP %d/%d: %s", b.Route[i].Host, currentHop, len(b.Route), err)
 			}
 
 			ncc, chans, reqs, err := ssh.NewClientConn(conn, formatHostAndPort(b.Route[i].Host, b.Route[i].Port), b.Route[i].SSHConfig)
 			if err != nil {
-				return nil, fmt.Errorf("unable to connect to bastion route host (%s), HOP %d/%d: %s", b.Route[i].Host, i+1, len(b.Route), err)
+				return nil, fmt.Errorf("unable to connect to bastion route host (%s), HOP %d/%d: %s", b.Route[i].Host, currentHop, len(b.Route), err)
 			}
 
 			client = ssh.NewClient(ncc, chans, reqs)
