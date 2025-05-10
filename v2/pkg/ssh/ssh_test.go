@@ -37,7 +37,14 @@ var (
 )
 
 func TestNewSingleClientConnection_Success(t *testing.T) {
-	conn, err := NewSingleClientConnection("localhost", "22", "tcp", defaultSSHClientConfig)
+	essentials := NewSingleClientConnectionEssentials{
+		"localhost",
+		"22",
+		"tcp",
+		defaultSSHClientConfig,
+	}
+
+	conn, err := NewSingleClientConnection(essentials)
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
@@ -46,7 +53,14 @@ func TestNewSingleClientConnection_Success(t *testing.T) {
 }
 
 func TestNewSingleClientConnection_Failure(t *testing.T) {
-	conn, err := NewSingleClientConnection("localhost", "22", "tcp", brokenSSHClientConfig)
+	essentials := NewSingleClientConnectionEssentials{
+		"localhost",
+		"22",
+		"tcp",
+		brokenSSHClientConfig,
+	}
+
+	conn, err := NewSingleClientConnection(essentials)
 	if err == nil {
 		t.Log("Expected error, but received nil.")
 		t.FailNow()
@@ -61,7 +75,15 @@ func TestNewSingleClientConnection_Failure(t *testing.T) {
 func TestNewBastionConnection_Success(t *testing.T) {
 	var bastionRoute = []*SingleClientConnection{defaultBastionHop}
 
-	_, err := NewBastionConnection("localhost", "22", "tcp", defaultSSHClientConfig, bastionRoute)
+	essentials := NewBastionClientEssentials{
+		"localhost",
+		"22",
+		"tcp",
+		defaultSSHClientConfig,
+		bastionRoute,
+	}
+
+	_, err := NewBastionConnection(essentials)
 	if err != nil {
 		t.Logf("Failed to dial bastion route: %s", err)
 		t.FailNow()
@@ -71,7 +93,15 @@ func TestNewBastionConnection_Success(t *testing.T) {
 func TestNewBastionConnection_Failure_Bastion(t *testing.T) {
 	var bastionRoute = []*SingleClientConnection{brokenBastionHop}
 
-	_, err := NewBastionConnection("localhost", "22", "tcp", defaultSSHClientConfig, bastionRoute)
+	essentials := NewBastionClientEssentials{
+		"localhost",
+		"22",
+		"tcp",
+		defaultSSHClientConfig,
+		bastionRoute,
+	}
+
+	_, err := NewBastionConnection(essentials)
 	if err == nil {
 		t.Log("Expected error, but received nil.")
 		t.FailNow()
@@ -81,7 +111,15 @@ func TestNewBastionConnection_Failure_Bastion(t *testing.T) {
 func TestNewBastionConnection_Failure_Target(t *testing.T) {
 	var bastionRoute = []*SingleClientConnection{defaultBastionHop}
 
-	_, err := NewBastionConnection("localhost", "22", "tcp", brokenSSHClientConfig, bastionRoute)
+	essentials := NewBastionClientEssentials{
+		"localhost",
+		"22",
+		"tcp",
+		brokenSSHClientConfig,
+		bastionRoute,
+	}
+
+	_, err := NewBastionConnection(essentials)
 	if err == nil {
 		t.Log("Expected error, but received nil.")
 		t.FailNow()
@@ -89,7 +127,14 @@ func TestNewBastionConnection_Failure_Target(t *testing.T) {
 }
 
 func TestSingleClientConnectionReconnect_Active(t *testing.T) {
-	conn, err := NewSingleClientConnection("localhost", "22", "tcp", defaultSSHClientConfig)
+	essentials := NewSingleClientConnectionEssentials{
+		"localhost",
+		"22",
+		"tcp",
+		defaultSSHClientConfig,
+	}
+
+	conn, err := NewSingleClientConnection(essentials)
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
@@ -104,7 +149,14 @@ func TestSingleClientConnectionReconnect_Active(t *testing.T) {
 }
 
 func TestSingleClientConnectionReconnect_Nil(t *testing.T) {
-	conn, err := NewSingleClientConnection("localhost", "22", "tcp", defaultSSHClientConfig)
+	essentials := NewSingleClientConnectionEssentials{
+		"localhost",
+		"22",
+		"tcp",
+		defaultSSHClientConfig,
+	}
+
+	conn, err := NewSingleClientConnection(essentials)
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
@@ -124,7 +176,15 @@ func TestSingleClientConnectionReconnect_Nil(t *testing.T) {
 func TestBastionClientConnectionReconnect_Active(t *testing.T) {
 	var bastionRoute = []*SingleClientConnection{defaultBastionHop}
 
-	conn, err := NewBastionConnection("localhost", "22", "tcp", defaultSSHClientConfig, bastionRoute)
+	essentials := NewBastionClientEssentials{
+		"localhost",
+		"22",
+		"tcp",
+		defaultSSHClientConfig,
+		bastionRoute,
+	}
+
+	conn, err := NewBastionConnection(essentials)
 	if err != nil {
 		t.Logf("Failed to dial bastion route: %s", err)
 		t.FailNow()
@@ -141,7 +201,15 @@ func TestBastionClientConnectionReconnect_Active(t *testing.T) {
 func TestBastionClientConnectionReconnect_Nil(t *testing.T) {
 	var bastionRoute = []*SingleClientConnection{defaultBastionHop}
 
-	conn, err := NewBastionConnection("localhost", "22", "tcp", defaultSSHClientConfig, bastionRoute)
+	essentials := NewBastionClientEssentials{
+		"localhost",
+		"22",
+		"tcp",
+		defaultSSHClientConfig,
+		bastionRoute,
+	}
+
+	conn, err := NewBastionConnection(essentials)
 	if err != nil {
 		t.Logf("Failed to dial bastion route: %s", err)
 		t.FailNow()

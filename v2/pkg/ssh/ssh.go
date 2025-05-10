@@ -34,13 +34,20 @@ type SingleClientConnection struct {
 	sshClient  *ssh.Client
 }
 
+type NewSingleClientConnectionEssentials struct {
+	Host      string
+	Port      string
+	Network   string
+	SSHConfig *ssh.ClientConfig
+}
+
 // NewSingleClientConnection creates a new single client connection, and errors if connection cannot be established.
-func NewSingleClientConnection(host, port, network string, sshConfig *ssh.ClientConfig) (*SingleClientConnection, error) {
+func NewSingleClientConnection(essentials NewSingleClientConnectionEssentials) (*SingleClientConnection, error) {
 	connection := &SingleClientConnection{
-		Host:      host,
-		Port:      port,
-		Network:   network,
-		SSHConfig: sshConfig,
+		Host:      essentials.Host,
+		Port:      essentials.Port,
+		Network:   essentials.Network,
+		SSHConfig: essentials.SSHConfig,
 	}
 
 	err := connection.establishConnection()
@@ -139,15 +146,23 @@ type BastionConnection struct {
 	bastionClient *ssh.Client
 }
 
-// NewBastionConnection creates a new BastionConnection by dialing the host through the specified route. Error if session for target host cannot be established.
-func NewBastionConnection(host, port, network string, sshConfig *ssh.ClientConfig, route []*SingleClientConnection) (*BastionConnection, error) {
-	connection := &BastionConnection{
-		Host:      host,
-		Port:      port,
-		Network:   network,
-		SSHConfig: sshConfig,
+type NewBastionClientEssentials struct {
+	Host      string
+	Port      string
+	Network   string
+	SSHConfig *ssh.ClientConfig
+	Route     []*SingleClientConnection
+}
 
-		Route: route,
+// NewBastionConnection creates a new BastionConnection by dialing the host through the specified route. Error if session for target host cannot be established.
+func NewBastionConnection(essentials NewBastionClientEssentials) (*BastionConnection, error) {
+	connection := &BastionConnection{
+		Host:      essentials.Host,
+		Port:      essentials.Port,
+		Network:   essentials.Network,
+		SSHConfig: essentials.SSHConfig,
+
+		Route: essentials.Route,
 	}
 
 	err := connection.establishConnection()
