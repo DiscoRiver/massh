@@ -13,11 +13,12 @@ const (
 	ErrClientConnectionFailed = "could not establish client connection"
 )
 
-type SSHConnection interface {
+type Connection interface {
 	RunJob(job string) error
 	StartJob(job string) error
 
 	Reconnect() error
+	Close() error
 
 	GetClient() *ssh.Client
 	GetSession() *ssh.Session
@@ -26,7 +27,7 @@ type SSHConnection interface {
 type SingleClientConnection struct {
 	Host      string
 	Port      string
-	Network   string
+	Network   Network
 	SSHConfig *ssh.ClientConfig
 
 	// Unexported
@@ -37,7 +38,7 @@ type SingleClientConnection struct {
 type NewSingleClientConnectionEssentials struct {
 	Host      string
 	Port      string
-	Network   string
+	Network   Network
 	SSHConfig *ssh.ClientConfig
 }
 
@@ -87,6 +88,13 @@ func (c *SingleClientConnection) Reconnect() error {
 	return nil
 }
 
+func (c *SingleClientConnection) Close() error {
+	if c.sshClient != nil {
+		return c.sshClient.Close()
+	}
+	return nil
+}
+
 // GetClient exposes the ssh.Client to the caller.
 func (c *SingleClientConnection) GetClient() *ssh.Client {
 	return c.sshClient
@@ -99,7 +107,7 @@ func (c *SingleClientConnection) GetSession() *ssh.Session {
 
 // generateClient creates an ssh.Client from struct params
 func (c *SingleClientConnection) generateClient() (err error) {
-	c.sshClient, err = ssh.Dial(c.Network, c.Host+":"+c.Port, c.SSHConfig)
+	c.sshClient, err = ssh.Dial(c.Network.String(), c.Host+":"+c.Port, c.SSHConfig)
 	if err != nil {
 		return fmt.Errorf("%s, %s", ErrClientConnectionFailed, err)
 	}
@@ -135,7 +143,7 @@ func (c *SingleClientConnection) establishConnection() error {
 type BastionConnection struct {
 	Host      string
 	Port      string
-	Network   string
+	Network   Network
 	SSHConfig *ssh.ClientConfig
 
 	Route []*SingleClientConnection
@@ -149,7 +157,7 @@ type BastionConnection struct {
 type NewBastionClientEssentials struct {
 	Host      string
 	Port      string
-	Network   string
+	Network   Network
 	SSHConfig *ssh.ClientConfig
 	Route     []*SingleClientConnection
 }
@@ -203,6 +211,13 @@ func (b *BastionConnection) Reconnect() error {
 	return nil
 }
 
+func (b *BastionConnection) Close() error {
+	if b.sshClient != nil {
+		return b.sshClient.Close()
+	}
+	return nil
+}
+
 func (b *BastionConnection) GetClient() *ssh.Client {
 	return b.sshClient
 }
@@ -212,7 +227,7 @@ func (b *BastionConnection) GetSession() *ssh.Session {
 }
 
 func (b *BastionConnection) generateClient() error {
-	remoteHostConn, err := b.bastionClient.Dial(b.Network, formatHostAndPort(b.Host, b.Port))
+	remoteHostConn, err := b.bastionClient.Dial(b.Network.String(), formatHostAndPort(b.Host, b.Port))
 	if err != nil {
 		return fmt.Errorf("unable to create remote host ssh client through bastion: %s", err)
 	}
@@ -254,7 +269,7 @@ func (b *BastionConnection) dialBastionRoute() (*ssh.Client, error) {
 }
 
 func (b *BastionConnection) handleSingleBastion() (*ssh.Client, error) {
-	client, err := ssh.Dial(b.Route[0].Network, formatHostAndPort(b.Route[0].Host, b.Route[0].Port), b.Route[0].SSHConfig)
+	client, err := ssh.Dial(b.Route[0].Network.String(), formatHostAndPort(b.Route[0].Host, b.Route[0].Port), b.Route[0].SSHConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -265,13 +280,13 @@ func (b *BastionConnection) handleMultipleBastion() (client *ssh.Client, err err
 	for i := range b.Route {
 		currentHop := i + 1
 		if i == 0 {
-			client, err = ssh.Dial(b.Route[i].Network, formatHostAndPort(b.Route[i].Host, b.Route[i].Port), b.Route[i].SSHConfig)
+			client, err = ssh.Dial(b.Route[i].Network.String(), formatHostAndPort(b.Route[i].Host, b.Route[i].Port), b.Route[i].SSHConfig)
 			if err != nil {
 				return nil, fmt.Errorf("unable to connect to bastion route host (%s), HOP %d/%d: %s", b.Route[i].Host, currentHop, len(b.Route), err)
 			}
 		} else {
 			// Dial this host using the previous client. Maintain the order of the route.
-			conn, err := client.Dial(b.Route[i].Network, formatHostAndPort(b.Route[i].Host, b.Route[i].Port))
+			conn, err := client.Dial(b.Route[i].Network.String(), formatHostAndPort(b.Route[i].Host, b.Route[i].Port))
 			if err != nil {
 				return nil, fmt.Errorf("unable to connect to bastion route host (%s), HOP %d/%d: %s", b.Route[i].Host, currentHop, len(b.Route), err)
 			}
