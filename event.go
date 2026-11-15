@@ -42,8 +42,9 @@ type Event struct {
 	// Command is the job's command.
 	Command string
 
-	// Data is a line of output, including its trailing newline if it had one. It is set for
-	// EventStdout and EventStderr, and is never modified after the event is sent.
+	// Data is a line of output, including its trailing newline if it had one. Lines longer than
+	// MaxLineLength are split across several events. It is set for EventStdout and EventStderr,
+	// and is never modified after the event is sent.
 	Data []byte
 
 	// Err is set for EventDone if the job failed. A command that ran but exited with a non-zero

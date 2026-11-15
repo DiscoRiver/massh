@@ -3,6 +3,7 @@ package massh
 import (
 	"errors"
 	"slices"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -19,6 +20,7 @@ const (
 // Errors reported by [Config.Validate].
 var (
 	ErrNoHosts           = errors.New("massh: no hosts")
+	ErrEmptyHost         = errors.New("massh: empty host name")
 	ErrNoJobs            = errors.New("massh: no jobs")
 	ErrNoSSHConfig       = errors.New("massh: SSHConfig is nil")
 	ErrNoAuth            = errors.New("massh: SSHConfig has no auth methods")
@@ -65,6 +67,10 @@ func (c *Config) Validate() error {
 	var errs []error
 	if len(c.Hosts) == 0 {
 		errs = append(errs, ErrNoHosts)
+	}
+	// An empty host would silently mean the local machine.
+	if slices.ContainsFunc(c.Hosts, func(h string) bool { return strings.TrimSpace(h) == "" }) {
+		errs = append(errs, ErrEmptyHost)
 	}
 	if len(c.Jobs) == 0 {
 		errs = append(errs, ErrNoJobs)

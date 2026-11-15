@@ -263,17 +263,22 @@ func (r *runner) runJob(client *ssh.Client, job Job, base Event, events chan<- E
 	return err
 }
 
+// MaxLineLength is the longest line sent in one event. Longer lines are split into several
+// events, so that a host writing endless output without newlines can't exhaust memory.
+const MaxLineLength = 64 << 10
+
 // readLines sends each line read from rd to lines as an event of the given kind.
 func readLines(rd io.Reader, kind EventKind, base Event, lines chan<- Event) {
-	br := bufio.NewReader(rd)
+	br := bufio.NewReaderSize(rd, MaxLineLength)
 	for {
-		line, err := br.ReadBytes('\n')
+		line, err := br.ReadSlice('\n')
 		if len(line) > 0 {
 			ev := base
-			ev.Kind, ev.Data = kind, line
+			// ReadSlice's result is only valid until the next read.
+			ev.Kind, ev.Data = kind, bytes.Clone(line)
 			lines <- ev
 		}
-		if err != nil {
+		if err != nil && !errors.Is(err, bufio.ErrBufferFull) {
 			// io.EOF, or the connection failed, which sess.Wait reports.
 			return
 		}

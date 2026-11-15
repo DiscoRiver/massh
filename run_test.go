@@ -433,3 +433,38 @@ func TestAgentAuth(t *testing.T) {
 		t.Error("AgentAuth succeeded without SSH_AUTH_SOCK")
 	}
 }
+
+func TestLongLinesAreSplit(t *testing.T) {
+	srv := sshtest.NewServer(t)
+	cfg := newConfig(t, srv, cmd("head -c 200000 /dev/zero | tr '\\0' x; echo; echo short"))
+	events, err := cfg.Stream(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []byte
+	var chunks int
+	for ev := range events {
+		if ev.Kind == massh.EventStdout {
+			if len(ev.Data) > massh.MaxLineLength {
+				t.Errorf("event of %d bytes exceeds MaxLineLength", len(ev.Data))
+			}
+			out = append(out, ev.Data...)
+			chunks++
+		}
+	}
+	if want := strings.Repeat("x", 200000) + "\nshort\n"; string(out) != want {
+		t.Errorf("reassembled output differs (%d bytes, want %d)", len(out), len(want))
+	}
+	if chunks < 4 {
+		t.Errorf("got %d events, want the long line split", chunks)
+	}
+}
+
+func TestValidateEmptyHost(t *testing.T) {
+	srv := sshtest.NewServer(t)
+	cfg := newConfig(t, srv, cmd("true"))
+	cfg.Hosts = append(cfg.Hosts, " ")
+	if err := cfg.Validate(); !errors.Is(err, massh.ErrEmptyHost) {
+		t.Errorf("Validate() = %v, want ErrEmptyHost", err)
+	}
+}
