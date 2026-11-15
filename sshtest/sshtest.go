@@ -49,7 +49,11 @@ type Server struct {
 
 	conns    atomic.Int64
 	forwards atomic.Int64
+	password atomic.Pointer[string]
 }
+
+// SetPassword makes the server also accept password authentication with pw.
+func (s *Server) SetPassword(pw string) { s.password.Store(&pw) }
 
 // NewServer starts a Server, which is closed when the test finishes.
 func NewServer(tb testing.TB) *Server {
@@ -100,6 +104,12 @@ func NewServer(tb testing.TB) *Server {
 				return nil, nil
 			}
 			return nil, errors.New("sshtest: unknown key")
+		},
+		PasswordCallback: func(_ ssh.ConnMetadata, pw []byte) (*ssh.Permissions, error) {
+			if want := s.password.Load(); want != nil && *want != "" && string(pw) == *want {
+				return nil, nil
+			}
+			return nil, errors.New("sshtest: wrong password")
 		},
 	}
 	s.config.AddHostKey(hostSigner)

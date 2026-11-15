@@ -1,6 +1,11 @@
 package massh
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+
+	"golang.org/x/crypto/ssh"
+)
 
 // EventKind says what an Event reports.
 type EventKind int
@@ -47,8 +52,10 @@ type Event struct {
 	// and is never modified after the event is sent.
 	Data []byte
 
-	// Err is set for EventDone if the job failed. A command that ran but exited with a non-zero
-	// status gives an *ssh.ExitError. If the work was cancelled, Err is the context's error.
+	// Err is set for EventDone if the job failed. Use [ExitStatus] to get the exit status of a
+	// command that ran but failed (an *ssh.ExitError, or an *ExitError with OpenSSH). With
+	// OpenSSH, a failure of ssh itself is an *OpenSSHError. If the work was cancelled, Err is
+	// the context's error.
 	Err error
 }
 
@@ -67,4 +74,17 @@ type Result struct {
 
 	// Err is nil if the job succeeded. See Event.Err.
 	Err error
+}
+
+// ExitStatus returns the exit status of a job's command from its error, and whether there is
+// one: it is false for nil and for errors that aren't about the command's exit status, such as
+// connection failures.
+func ExitStatus(err error) (int, bool) {
+	if e, ok := errors.AsType[*ssh.ExitError](err); ok {
+		return e.ExitStatus(), true
+	}
+	if e, ok := errors.AsType[*ExitError](err); ok {
+		return e.Status, true
+	}
+	return 0, false
 }

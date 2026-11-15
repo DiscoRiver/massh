@@ -2,6 +2,7 @@ package massh
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -62,6 +63,10 @@ type Config struct {
 	// CancelSlow stops jobs as soon as they are flagged slow. Their error is ErrSlow.
 	CancelSlow bool
 
+	// OpenSSH, if set, runs the system ssh client for every job instead of connecting with
+	// golang.org/x/crypto/ssh. See [OpenSSH].
+	OpenSSH *OpenSSH
+
 	// Resolve, if set, is called for each host to override how it is reached, for example
 	// from ~/.ssh/config. If it returns an error, that host fails with it.
 	Resolve func(host string) (HostOptions, error)
@@ -92,6 +97,19 @@ func (c *Config) Validate() error {
 	}
 	if len(c.Jobs) == 0 {
 		errs = append(errs, ErrNoJobs)
+	}
+	if c.OpenSSH != nil {
+		// ssh_config does the job of SSHConfig and Resolve.
+		if c.Resolve != nil {
+			errs = append(errs, ErrResolveWithSSH)
+		}
+		for _, h := range append(slices.Clone(c.Hosts), c.BastionHost) {
+			if h != "" && !safeForSSH(h) {
+				errs = append(errs, fmt.Errorf("%w: %q", ErrUnsafeHost, h))
+			}
+		}
+		errs = append(errs, c.OpenSSH.validate()...)
+		return errors.Join(errs...)
 	}
 	// With Resolve, each host's SSH config is checked when it is resolved instead.
 	if c.Resolve == nil {

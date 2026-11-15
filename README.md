@@ -80,6 +80,9 @@ stop all work: cancelling closes every connection.
   runs it, and removes it again.
 - **Bastion host**: set `BastionHost` (and optionally `BastionSSHConfig`) to tunnel every
   connection through a jump host.
+- **System ssh client**: set `OpenSSH` to run your `ssh` instead of the Go SSH library, so
+  everything in `~/.ssh/config` works, along with Kerberos, security keys and certificates. massh
+  hardens it: hosts can't be read as options, forwarding is off by default, and it never prompts.
 - **Per-host settings**: `Resolve` can give each host its own address, user, keys and jump host,
   for example from `~/.ssh/config`.
 - **Host keys**: `KnownHosts` checks `~/.ssh/known_hosts`; `KnownHostsAcceptNew` also records

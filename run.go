@@ -3,16 +3,12 @@ package massh
 import (
 	"bufio"
 	"bytes"
-	"cmp"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"slices"
 	"sync"
 	"time"
-
-	"golang.org/x/crypto/ssh"
 )
 
 // ErrSlow is the error for jobs stopped because they were slow (see Config.CancelSlow).
@@ -35,26 +31,24 @@ func (c *Config) Stream(ctx context.Context) (<-chan Event, error) {
 		return nil, err
 	}
 
-	r := &runner{
-		ctx:              ctx,
-		hosts:            c.uniqueHosts(),
-		jobs:             slices.Clone(c.Jobs),
-		sshConfig:        c.SSHConfig,
-		bastionHost:      c.BastionHost,
-		bastionSSHConfig: c.bastionSSHConfig(),
-		resolve:          c.Resolve,
-		port:             c.port(),
-		workers:          c.workers(),
-		slowTimeout:      c.SlowTimeout,
-		cancelSlow:       c.CancelSlow,
-		bastions:         make(map[bastionKey]*bastionConn),
+	var t transport
+	var err error
+	if c.OpenSSH != nil {
+		t, err = newOpenSSHTransport(ctx, c)
+	} else {
+		t, err = newNativeTransport(ctx, c)
 	}
-
-	// Connect to the default bastion now, so that a problem with it is reported here.
-	if c.BastionHost != "" {
-		if _, err := r.bastion(c.BastionHost, r.bastionSSHConfig); err != nil {
-			return nil, fmt.Errorf("massh: bastion: %w", err)
-		}
+	if err != nil {
+		return nil, err
+	}
+	r := &runner{
+		ctx:         ctx,
+		hosts:       c.uniqueHosts(),
+		jobs:        slices.Clone(c.Jobs),
+		transport:   t,
+		workers:     c.workers(),
+		slowTimeout: c.SlowTimeout,
+		cancelSlow:  c.CancelSlow,
 	}
 
 	events := make(chan Event)
@@ -120,89 +114,42 @@ func (c *Config) Run(ctx context.Context) ([]Result, error) {
 
 // runner holds the state of one call to Stream.
 type runner struct {
-	ctx              context.Context
-	hosts            []string
-	jobs             []Job
-	sshConfig        *ssh.ClientConfig
-	bastionHost      string
-	bastionSSHConfig *ssh.ClientConfig
-	resolve          func(string) (HostOptions, error)
-	port             int
-	workers          int
-	slowTimeout      time.Duration
-	cancelSlow       bool
-
-	mu       sync.Mutex
-	bastions map[bastionKey]*bastionConn
+	ctx         context.Context
+	hosts       []string
+	jobs        []Job
+	transport   transport
+	workers     int
+	slowTimeout time.Duration
+	cancelSlow  bool
 }
 
-type bastionKey struct{ addr, user string }
-
-// bastionConn is a connection to a bastion host, shared by every host that uses it.
-type bastionConn struct {
-	once   sync.Once
-	client *ssh.Client
-	err    error
+// transport is a way of reaching hosts: natively with golang.org/x/crypto/ssh, or by running the
+// OpenSSH client.
+type transport interface {
+	// connect prepares to run jobs on host. It is called concurrently for different hosts.
+	connect(host string) (hostConn, error)
+	// close releases anything shared between hosts, once every host has finished.
+	close()
 }
 
-// bastion returns the shared connection to the bastion host, connecting on first use.
-func (r *runner) bastion(host string, cfg *ssh.ClientConfig) (*ssh.Client, error) {
-	addr := hostAddr(host, r.port)
-	key := bastionKey{addr, cfg.User}
-	r.mu.Lock()
-	b, ok := r.bastions[key]
-	if !ok {
-		b = &bastionConn{}
-		r.bastions[key] = b
-	}
-	r.mu.Unlock()
-	b.once.Do(func() { b.client, b.err = dial(r.ctx, nil, addr, cfg) })
-	return b.client, b.err
+// hostConn runs jobs on one host, one at a time.
+type hostConn interface {
+	start(job Job) (*process, error)
+	close()
 }
 
-// connect resolves host's options and connects to it.
-func (r *runner) connect(host string) (*ssh.Client, error) {
-	var opts HostOptions
-	if r.resolve != nil {
-		var err error
-		if opts, err = r.resolve(host); err != nil {
-			return nil, fmt.Errorf("massh: resolve %s: %w", host, err)
-		}
-	}
-	cfg := cmp.Or(opts.SSHConfig, r.sshConfig)
-	if err := validateSSHConfig(cfg); err != nil {
-		return nil, err
-	}
-
-	bastionHost, bastionCfg := r.bastionHost, r.bastionSSHConfig
-	if opts.Bastion != "" && opts.Bastion != r.bastionHost {
-		bastionHost, bastionCfg = opts.Bastion, cfg
-	}
-	if opts.BastionSSHConfig != nil {
-		bastionCfg = opts.BastionSSHConfig
-	}
-	var bastion *ssh.Client
-	if bastionHost != "" {
-		if err := validateSSHConfig(bastionCfg); err != nil {
-			return nil, fmt.Errorf("massh: bastion %s: %w", bastionHost, err)
-		}
-		var err error
-		if bastion, err = r.bastion(bastionHost, bastionCfg); err != nil {
-			return nil, fmt.Errorf("massh: bastion %s: %w", bastionHost, err)
-		}
-	}
-	return dial(r.ctx, bastion, hostAddr(cmp.Or(opts.Addr, host), r.port), cfg)
+// process is a job running on a host.
+type process struct {
+	stdout, stderr io.Reader
+	// wait waits for the job to exit, after its output has been read.
+	wait func() error
+	// kill stops the job.
+	kill func()
 }
 
 func (r *runner) run(events chan<- Event) {
 	defer close(events)
-	defer func() {
-		for _, b := range r.bastions {
-			if b.client != nil {
-				b.client.Close()
-			}
-		}
-	}()
+	defer r.transport.close()
 
 	hosts := make(chan string)
 	var wg sync.WaitGroup
@@ -236,21 +183,21 @@ func (r *runner) emit(events chan<- Event, ev Event) {
 
 // runHost connects to host and runs every job on it in turn.
 func (r *runner) runHost(host string, events chan<- Event) {
-	client, err := r.connect(host)
+	hc, err := r.transport.connect(host)
 	if err != nil {
+		if r.ctx.Err() != nil {
+			err = r.ctx.Err()
+		}
 		for i, job := range r.jobs {
 			r.emit(events, Event{Kind: EventDone, Host: host, Job: i, Command: job.Command, Err: err})
 		}
 		return
 	}
-	defer client.Close()
-	// Closing the connection is the only reliable way to interrupt a running command.
-	stop := context.AfterFunc(r.ctx, func() { client.Close() })
-	defer stop()
+	defer hc.close()
 
 	for i, job := range r.jobs {
 		ev := Event{Host: host, Job: i, Command: job.Command}
-		err := r.runJob(client, job, ev, events)
+		err := r.runJob(hc, job, ev, events)
 		if err != nil && r.ctx.Err() != nil {
 			err = r.ctx.Err()
 		}
@@ -259,27 +206,11 @@ func (r *runner) runHost(host string, events chan<- Event) {
 	}
 }
 
-// runJob runs job in a new session on client, sending its output as events based on base.
-func (r *runner) runJob(client *ssh.Client, job Job, base Event, events chan<- Event) error {
-	sess, err := client.NewSession()
+// runJob runs job on hc, sending its output as events based on base.
+func (r *runner) runJob(hc hostConn, job Job, base Event, events chan<- Event) error {
+	p, err := hc.start(job)
 	if err != nil {
-		return fmt.Errorf("massh: new session: %w", err)
-	}
-	defer sess.Close()
-
-	if job.Stdin != nil {
-		sess.Stdin = bytes.NewReader(job.Stdin)
-	}
-	stdout, err := sess.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("massh: stdout: %w", err)
-	}
-	stderr, err := sess.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("massh: stderr: %w", err)
-	}
-	if err := sess.Start(job.Command); err != nil {
-		return fmt.Errorf("massh: start: %w", err)
+		return err
 	}
 
 	// Both pipes must be read concurrently, or a command that fills one while we read the other
@@ -287,8 +218,8 @@ func (r *runner) runJob(client *ssh.Client, job Job, base Event, events chan<- E
 	// sends events for the job, which keeps them ordered and guarantees EventDone comes last.
 	lines := make(chan Event)
 	var readers sync.WaitGroup
-	readers.Go(func() { readLines(stdout, EventStdout, base, lines) })
-	readers.Go(func() { readLines(stderr, EventStderr, base, lines) })
+	readers.Go(func() { readLines(p.stdout, EventStdout, base, lines) })
+	readers.Go(func() { readLines(p.stderr, EventStderr, base, lines) })
 	go func() {
 		readers.Wait()
 		close(lines)
@@ -321,13 +252,12 @@ func (r *runner) runJob(client *ssh.Client, job Job, base Event, events chan<- E
 			ev.Kind = EventSlow
 			r.emit(events, ev)
 			if r.cancelSlow {
-				_ = sess.Signal(ssh.SIGKILL)
-				_ = sess.Close()
+				p.kill()
 			}
 		}
 	}
 
-	err = sess.Wait()
+	err = p.wait()
 	if slow && r.cancelSlow {
 		return ErrSlow
 	}
@@ -350,7 +280,7 @@ func readLines(rd io.Reader, kind EventKind, base Event, lines chan<- Event) {
 			lines <- ev
 		}
 		if err != nil && !errors.Is(err, bufio.ErrBufferFull) {
-			// io.EOF, or the connection failed, which sess.Wait reports.
+			// io.EOF, or the connection failed, which the process's wait reports.
 			return
 		}
 	}

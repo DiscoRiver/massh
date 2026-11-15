@@ -43,6 +43,13 @@ v2 is a rewrite around `context.Context` and a single channel of events. The mod
   `~/.ssh/config`). Bastion connections are shared between hosts that use the same one.
 - `KnownHostsAcceptNew`: trust-on-first-use host key checking, like OpenSSH's
   `StrictHostKeyChecking accept-new`.
+- `Config.OpenSSH` runs the system `ssh` client instead of the Go SSH library, so everything in
+  ssh_config works (Match, Include, ProxyCommand, multi-hop ProxyJump, ControlMaster), as does
+  authentication the Go library lacks (Kerberos, security keys, certificates). Hosts are passed
+  after `--` and validated so they can't be read as options; agent, X11 and port forwarding are
+  off unless `AllowForwarding` is set; ssh never prompts (passwords go through `HandleAskpass`,
+  never arguments or the environment); and cancelling kills ssh's whole process group.
+- `ExitStatus(err)` gets a command's exit status from either backend.
 - `MaxLineLength`: long lines are split, so endless output without newlines can't exhaust memory.
 
 ### Other

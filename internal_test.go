@@ -37,3 +37,29 @@ func TestShellQuote(t *testing.T) {
 		t.Errorf("shellQuote = %s, want %s", got, want)
 	}
 }
+
+func TestAskpassAnswers(t *testing.T) {
+	s := &askpassServer{password: "pw", passphrase: "pp"}
+	for prompt, want := range map[string]string{
+		"user@host's password: ": "pw",
+		"Password:":              "pw",
+		"Enter passphrase for key '/home/u/.ssh/id': ":                          "pp",
+		"Are you sure you want to continue connecting (yes/no/[fingerprint])? ": "",
+		"Verification code: ": "",
+	} {
+		if got := s.answerFor(prompt); got != want {
+			t.Errorf("answerFor(%q) = %q, want %q", prompt, got, want)
+		}
+	}
+}
+
+func TestSafeForSSH(t *testing.T) {
+	for host, want := range map[string]bool{
+		"web1": true, "web1:2222": true, "[::1]:22": true, "user@host": true,
+		"": false, "-oProxyCommand=x": false, "-": false, "a b": false, "a\tb": false, "a\x00b": false,
+	} {
+		if got := safeForSSH(host); got != want {
+			t.Errorf("safeForSSH(%q) = %v, want %v", host, got, want)
+		}
+	}
+}
