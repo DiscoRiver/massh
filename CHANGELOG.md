@@ -19,7 +19,8 @@ v2 is a rewrite around `context.Context` and a single channel of events. The mod
 - `SlowTimeout` is a `time.Duration`; zero disables slow detection (it used to flag every host).
 - `CancelSlowHosts` is now `CancelSlow`, and is implemented: slow jobs are stopped with `ErrSlow`.
 - The `Set*` helpers are gone; set `Config` fields directly. Auth helpers are now the functions
-  `PrivateKeyAuth`, `AgentAuth`, and the new `KnownHosts` host key callback.
+  `PrivateKeyAuth`, `AgentAuth`, the new `PrivateKeySigner`/`AgentSigners` (to combine keys
+  from several sources in one auth method), and the new `KnownHosts` host key callback.
 - `Job.SetScript` is now `NewScriptJob`. Any script with a shebang is accepted, each argument is
   passed as one shell-quoted word, and the temporary file is removed even if the script fails.
 - `CheckSanity` is now `Validate`, which returns all problems joined into one error.

@@ -13,6 +13,7 @@ import (
 	"github.com/discoriver/massh/v2"
 	"github.com/discoriver/massh/v2/sshtest"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 )
 
 func newConfig(t *testing.T, srv *sshtest.Server, jobs ...massh.Job) *massh.Config {
@@ -386,5 +387,49 @@ func anyOf(keys ...ssh.PublicKey) ssh.HostKeyCallback {
 			}
 		}
 		return errors.New("unknown host key")
+	}
+}
+
+func TestAgentAuth(t *testing.T) {
+	srv := sshtest.NewServer(t)
+	keyring := agent.NewKeyring()
+	signerKey, err := ssh.ParseRawPrivateKey(srv.ClientKeyPEM)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := keyring.Add(agent.AddedKey{PrivateKey: signerKey}); err != nil {
+		t.Fatal(err)
+	}
+	sock := filepath.Join(t.TempDir(), "agent.sock")
+	ln, err := net.Listen("unix", sock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go agent.ServeAgent(keyring, c)
+		}
+	}()
+	t.Setenv("SSH_AUTH_SOCK", sock)
+
+	auth, err := massh.AgentAuth()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := newConfig(t, srv, cmd("echo ok"))
+	cfg.SSHConfig.Auth = []ssh.AuthMethod{auth}
+	res, err := cfg.Run(t.Context())
+	if err != nil || res[0].Err != nil {
+		t.Fatalf("Run: %v, %v", err, res[0].Err)
+	}
+
+	t.Setenv("SSH_AUTH_SOCK", "")
+	if _, err := massh.AgentAuth(); err == nil {
+		t.Error("AgentAuth succeeded without SSH_AUTH_SOCK")
 	}
 }

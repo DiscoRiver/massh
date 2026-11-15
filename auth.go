@@ -13,10 +13,9 @@ import (
 	"golang.org/x/crypto/ssh/knownhosts"
 )
 
-// PrivateKeyAuth returns an auth method that uses the private key in the file at path, decrypting
-// it with passphrase if that is not empty. A leading "~/" in path is replaced by the user's home
-// directory.
-func PrivateKeyAuth(path, passphrase string) (ssh.AuthMethod, error) {
+// PrivateKeySigner reads the private key in the file at path, decrypting it with passphrase if
+// that is not empty. A leading "~/" in path is replaced by the user's home directory.
+func PrivateKeySigner(path, passphrase string) (ssh.Signer, error) {
 	path, err := expandHome(path)
 	if err != nil {
 		return nil, err
@@ -35,12 +34,28 @@ func PrivateKeyAuth(path, passphrase string) (ssh.AuthMethod, error) {
 	if err != nil {
 		return nil, fmt.Errorf("massh: parse private key %s: %w", path, err)
 	}
+	return signer, nil
+}
+
+// PrivateKeyAuth returns an auth method that uses the private key file at path. See
+// [PrivateKeySigner].
+//
+// The SSH client tries each kind of auth method only once, so a second "publickey" method in
+// ssh.ClientConfig.Auth (such as [AgentAuth]) is skipped if the first is rejected. To offer keys
+// from several sources, combine them in one [ssh.PublicKeysCallback], using [PrivateKeySigner]
+// and [AgentSigners].
+func PrivateKeyAuth(path, passphrase string) (ssh.AuthMethod, error) {
+	signer, err := PrivateKeySigner(path, passphrase)
+	if err != nil {
+		return nil, err
+	}
 	return ssh.PublicKeys(signer), nil
 }
 
-// AgentAuth returns an auth method that uses the keys held by the SSH agent listening on
-// $SSH_AUTH_SOCK. The connection to the agent stays open for the life of the process.
-func AgentAuth() (ssh.AuthMethod, error) {
+// AgentSigners connects to the SSH agent listening on $SSH_AUTH_SOCK and returns a function that
+// lists the agent's keys, for use with [ssh.PublicKeysCallback]. The connection to the agent stays
+// open for the life of the process.
+func AgentSigners() (func() ([]ssh.Signer, error), error) {
 	sock := os.Getenv("SSH_AUTH_SOCK")
 	if sock == "" {
 		return nil, errors.New("massh: SSH_AUTH_SOCK is not set")
@@ -49,7 +64,17 @@ func AgentAuth() (ssh.AuthMethod, error) {
 	if err != nil {
 		return nil, fmt.Errorf("massh: connect to SSH agent: %w", err)
 	}
-	return ssh.PublicKeysCallback(agent.NewClient(conn).Signers), nil
+	return agent.NewClient(conn).Signers, nil
+}
+
+// AgentAuth returns an auth method that uses the keys held by the SSH agent. See [AgentSigners]
+// and the note on [PrivateKeyAuth].
+func AgentAuth() (ssh.AuthMethod, error) {
+	signers, err := AgentSigners()
+	if err != nil {
+		return nil, err
+	}
+	return ssh.PublicKeysCallback(signers), nil
 }
 
 // KnownHosts returns a host key callback that accepts only the keys listed in the given
