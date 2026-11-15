@@ -128,7 +128,7 @@ func (c *Config) uniqueHosts() []string {
 		seen[h] = struct{}{}
 		hosts = append(hosts, h)
 	}
-	return slices.Clip(hosts)
+	return hosts
 }
 
 func (c *Config) port() int {
