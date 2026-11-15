@@ -1,6 +1,9 @@
 # Changelog
 
-## v2.0.0 (unreleased)
+## v2.1.0 (unreleased)
+
+The first release of the `/v2` module. (The existing `v2.0.0` and `v2.0.1` tags predate the
+`/v2` module path, so Go treats them as invalid; tag this release `v2.1.0`.)
 
 v2 is a rewrite around `context.Context` and a single channel of events. The module path is now
 `github.com/discoriver/massh/v2`; v1 users are unaffected until they change their import path.
