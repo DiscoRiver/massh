@@ -38,7 +38,8 @@ type Config struct {
 	Jobs []Job
 
 	// SSHConfig is used to connect to every host. It must have at least one auth method and a
-	// HostKeyCallback. Its Timeout bounds both the TCP connection and the SSH handshake.
+	// HostKeyCallback, unless Resolve provides a config for each host. Its Timeout bounds both
+	// the TCP connection and the SSH handshake.
 	SSHConfig *ssh.ClientConfig
 
 	// Port is used for hosts that don't include one. Zero means DefaultPort.
@@ -92,9 +93,12 @@ func (c *Config) Validate() error {
 	if len(c.Jobs) == 0 {
 		errs = append(errs, ErrNoJobs)
 	}
-	errs = append(errs, validateSSHConfig(c.SSHConfig))
-	if c.BastionHost != "" && c.BastionSSHConfig != nil {
-		errs = append(errs, validateSSHConfig(c.BastionSSHConfig))
+	// With Resolve, each host's SSH config is checked when it is resolved instead.
+	if c.Resolve == nil {
+		errs = append(errs, validateSSHConfig(c.SSHConfig))
+	}
+	if c.BastionHost != "" {
+		errs = append(errs, validateSSHConfig(c.bastionSSHConfig()))
 	}
 	return errors.Join(errs...)
 }

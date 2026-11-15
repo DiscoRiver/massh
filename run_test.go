@@ -472,9 +472,10 @@ func TestValidateEmptyHost(t *testing.T) {
 func TestResolve(t *testing.T) {
 	bastion, target := sshtest.NewServer(t), sshtest.NewServer(t)
 	cfg := &massh.Config{
-		Hosts:     []string{"alias-a", "alias-b", "broken"},
-		Jobs:      []massh.Job{cmd("echo ok")},
-		SSHConfig: bastion.ClientConfig(), // deliberately wrong for target
+		Hosts: []string{"alias-a", "alias-b", "broken"},
+		Jobs:  []massh.Job{cmd("echo ok")},
+		// No usable default config: Resolve provides one per host.
+		SSHConfig: &ssh.ClientConfig{},
 		Resolve: func(host string) (massh.HostOptions, error) {
 			switch host {
 			case "alias-a", "alias-b":
@@ -496,6 +497,9 @@ func TestResolve(t *testing.T) {
 		if r.Err != nil || string(r.Stdout) != "ok\n" {
 			t.Errorf("%s: %+v", r.Host, r)
 		}
+	}
+	if _, err := (&massh.Config{Hosts: []string{"x"}, Jobs: cfg.Jobs, SSHConfig: &ssh.ClientConfig{}}).Run(t.Context()); !errors.Is(err, massh.ErrNoAuth) {
+		t.Errorf("without Resolve, an empty SSHConfig gives %v, want ErrNoAuth", err)
 	}
 	if res[2].Err == nil || !strings.Contains(res[2].Err.Error(), "no such alias") {
 		t.Errorf("broken: Err = %v", res[2].Err)
