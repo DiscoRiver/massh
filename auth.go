@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -96,6 +97,52 @@ func KnownHosts(files ...string) (ssh.HostKeyCallback, error) {
 		return nil, fmt.Errorf("massh: known hosts: %w", err)
 	}
 	return cb, nil
+}
+
+// KnownHostsAcceptNew is like KnownHosts for a single file, except that keys of hosts that
+// aren't in the file yet are accepted and added to it, like OpenSSH's
+// "StrictHostKeyChecking accept-new". A host whose key has changed is still rejected. The file is
+// created if it doesn't exist.
+func KnownHostsAcceptNew(file string) (ssh.HostKeyCallback, error) {
+	file, err := expandHome(file)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(file), 0o700); err != nil {
+		return nil, fmt.Errorf("massh: known hosts: %w", err)
+	}
+	f, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("massh: known hosts: %w", err)
+	}
+	f.Close()
+
+	var mu sync.Mutex
+	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		mu.Lock()
+		defer mu.Unlock()
+		// Re-read the file each time, so that keys added for other hosts are seen.
+		check, err := knownhosts.New(file)
+		if err != nil {
+			return fmt.Errorf("massh: known hosts: %w", err)
+		}
+		err = check(hostname, remote, key)
+		keyErr, ok := errors.AsType[*knownhosts.KeyError](err)
+		if !ok || len(keyErr.Want) > 0 {
+			// Known and matching (nil), changed key, or another problem.
+			return err
+		}
+		f, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY, 0o600)
+		if err != nil {
+			return fmt.Errorf("massh: known hosts: %w", err)
+		}
+		defer f.Close()
+		line := knownhosts.Line([]string{knownhosts.Normalize(hostname)}, key)
+		if _, err := fmt.Fprintln(f, line); err != nil {
+			return fmt.Errorf("massh: known hosts: %w", err)
+		}
+		return nil
+	}, nil
 }
 
 func expandHome(path string) (string, error) {

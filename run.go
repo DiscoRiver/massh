@@ -3,6 +3,7 @@ package massh
 import (
 	"bufio"
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -35,22 +36,25 @@ func (c *Config) Stream(ctx context.Context) (<-chan Event, error) {
 	}
 
 	r := &runner{
-		ctx:         ctx,
-		hosts:       c.uniqueHosts(),
-		jobs:        slices.Clone(c.Jobs),
-		sshConfig:   c.SSHConfig,
-		port:        c.port(),
-		workers:     c.workers(),
-		slowTimeout: c.SlowTimeout,
-		cancelSlow:  c.CancelSlow,
+		ctx:              ctx,
+		hosts:            c.uniqueHosts(),
+		jobs:             slices.Clone(c.Jobs),
+		sshConfig:        c.SSHConfig,
+		bastionHost:      c.BastionHost,
+		bastionSSHConfig: c.bastionSSHConfig(),
+		resolve:          c.Resolve,
+		port:             c.port(),
+		workers:          c.workers(),
+		slowTimeout:      c.SlowTimeout,
+		cancelSlow:       c.CancelSlow,
+		bastions:         make(map[bastionKey]*bastionConn),
 	}
 
+	// Connect to the default bastion now, so that a problem with it is reported here.
 	if c.BastionHost != "" {
-		b, err := dial(ctx, nil, hostAddr(c.BastionHost, r.port), c.bastionSSHConfig())
-		if err != nil {
+		if _, err := r.bastion(c.BastionHost, r.bastionSSHConfig); err != nil {
 			return nil, fmt.Errorf("massh: bastion: %w", err)
 		}
-		r.bastion = b
 	}
 
 	events := make(chan Event)
@@ -116,22 +120,89 @@ func (c *Config) Run(ctx context.Context) ([]Result, error) {
 
 // runner holds the state of one call to Stream.
 type runner struct {
-	ctx         context.Context
-	hosts       []string
-	jobs        []Job
-	sshConfig   *ssh.ClientConfig
-	bastion     *ssh.Client
-	port        int
-	workers     int
-	slowTimeout time.Duration
-	cancelSlow  bool
+	ctx              context.Context
+	hosts            []string
+	jobs             []Job
+	sshConfig        *ssh.ClientConfig
+	bastionHost      string
+	bastionSSHConfig *ssh.ClientConfig
+	resolve          func(string) (HostOptions, error)
+	port             int
+	workers          int
+	slowTimeout      time.Duration
+	cancelSlow       bool
+
+	mu       sync.Mutex
+	bastions map[bastionKey]*bastionConn
+}
+
+type bastionKey struct{ addr, user string }
+
+// bastionConn is a connection to a bastion host, shared by every host that uses it.
+type bastionConn struct {
+	once   sync.Once
+	client *ssh.Client
+	err    error
+}
+
+// bastion returns the shared connection to the bastion host, connecting on first use.
+func (r *runner) bastion(host string, cfg *ssh.ClientConfig) (*ssh.Client, error) {
+	addr := hostAddr(host, r.port)
+	key := bastionKey{addr, cfg.User}
+	r.mu.Lock()
+	b, ok := r.bastions[key]
+	if !ok {
+		b = &bastionConn{}
+		r.bastions[key] = b
+	}
+	r.mu.Unlock()
+	b.once.Do(func() { b.client, b.err = dial(r.ctx, nil, addr, cfg) })
+	return b.client, b.err
+}
+
+// connect resolves host's options and connects to it.
+func (r *runner) connect(host string) (*ssh.Client, error) {
+	var opts HostOptions
+	if r.resolve != nil {
+		var err error
+		if opts, err = r.resolve(host); err != nil {
+			return nil, fmt.Errorf("massh: resolve %s: %w", host, err)
+		}
+	}
+	cfg := cmp.Or(opts.SSHConfig, r.sshConfig)
+	if err := validateSSHConfig(cfg); err != nil {
+		return nil, err
+	}
+
+	bastionHost, bastionCfg := r.bastionHost, r.bastionSSHConfig
+	if opts.Bastion != "" && opts.Bastion != r.bastionHost {
+		bastionHost, bastionCfg = opts.Bastion, cfg
+	}
+	if opts.BastionSSHConfig != nil {
+		bastionCfg = opts.BastionSSHConfig
+	}
+	var bastion *ssh.Client
+	if bastionHost != "" {
+		if err := validateSSHConfig(bastionCfg); err != nil {
+			return nil, fmt.Errorf("massh: bastion %s: %w", bastionHost, err)
+		}
+		var err error
+		if bastion, err = r.bastion(bastionHost, bastionCfg); err != nil {
+			return nil, fmt.Errorf("massh: bastion %s: %w", bastionHost, err)
+		}
+	}
+	return dial(r.ctx, bastion, hostAddr(cmp.Or(opts.Addr, host), r.port), cfg)
 }
 
 func (r *runner) run(events chan<- Event) {
 	defer close(events)
-	if r.bastion != nil {
-		defer r.bastion.Close()
-	}
+	defer func() {
+		for _, b := range r.bastions {
+			if b.client != nil {
+				b.client.Close()
+			}
+		}
+	}()
 
 	hosts := make(chan string)
 	var wg sync.WaitGroup
@@ -165,7 +236,7 @@ func (r *runner) emit(events chan<- Event, ev Event) {
 
 // runHost connects to host and runs every job on it in turn.
 func (r *runner) runHost(host string, events chan<- Event) {
-	client, err := dial(r.ctx, r.bastion, hostAddr(host, r.port), r.sshConfig)
+	client, err := r.connect(host)
 	if err != nil {
 		for i, job := range r.jobs {
 			r.emit(events, Event{Kind: EventDone, Host: host, Job: i, Command: job.Command, Err: err})

@@ -468,3 +468,74 @@ func TestValidateEmptyHost(t *testing.T) {
 		t.Errorf("Validate() = %v, want ErrEmptyHost", err)
 	}
 }
+
+func TestResolve(t *testing.T) {
+	bastion, target := sshtest.NewServer(t), sshtest.NewServer(t)
+	cfg := &massh.Config{
+		Hosts:     []string{"alias-a", "alias-b", "broken"},
+		Jobs:      []massh.Job{cmd("echo ok")},
+		SSHConfig: bastion.ClientConfig(), // deliberately wrong for target
+		Resolve: func(host string) (massh.HostOptions, error) {
+			switch host {
+			case "alias-a", "alias-b":
+				return massh.HostOptions{
+					Addr:             target.Addr,
+					SSHConfig:        target.ClientConfig(),
+					Bastion:          bastion.Addr,
+					BastionSSHConfig: bastion.ClientConfig(),
+				}, nil
+			}
+			return massh.HostOptions{}, errors.New("no such alias")
+		},
+	}
+	res, err := cfg.Run(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range res[:2] {
+		if r.Err != nil || string(r.Stdout) != "ok\n" {
+			t.Errorf("%s: %+v", r.Host, r)
+		}
+	}
+	if res[2].Err == nil || !strings.Contains(res[2].Err.Error(), "no such alias") {
+		t.Errorf("broken: Err = %v", res[2].Err)
+	}
+	// The bastion connection is shared.
+	if bastion.Conns() != 1 || bastion.Forwards() != 2 {
+		t.Errorf("bastion conns = %d, forwards = %d; want 1 and 2", bastion.Conns(), bastion.Forwards())
+	}
+}
+
+func TestKnownHostsAcceptNew(t *testing.T) {
+	srv := sshtest.NewServer(t)
+	file := filepath.Join(t.TempDir(), "sub", "known_hosts")
+	cb, err := massh.KnownHostsAcceptNew(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := newConfig(t, srv, cmd("true"))
+	cfg.SSHConfig.HostKeyCallback = cb
+
+	// First contact: accepted and recorded.
+	if res, _ := cfg.Run(t.Context()); res[0].Err != nil {
+		t.Fatalf("first connection: %v", res[0].Err)
+	}
+	data, _ := os.ReadFile(file)
+	if strings.Count(string(data), "\n") != 1 {
+		t.Fatalf("known_hosts = %q, want one line", data)
+	}
+	// Second contact: known and matching.
+	if res, _ := cfg.Run(t.Context()); res[0].Err != nil {
+		t.Fatalf("second connection: %v", res[0].Err)
+	}
+	// A different key for the same address is rejected.
+	key := sshtest.NewServer(t).HostKey
+	remote, _ := net.ResolveTCPAddr("tcp", srv.Addr)
+	if err := cb(srv.Addr, remote, key); err == nil {
+		t.Error("accepted a changed host key")
+	}
+	data2, _ := os.ReadFile(file)
+	if string(data2) != string(data) {
+		t.Error("known_hosts changed after a key mismatch")
+	}
+}

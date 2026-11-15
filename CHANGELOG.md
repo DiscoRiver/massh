@@ -38,6 +38,13 @@ v2 is a rewrite around `context.Context` and a single channel of events. The mod
 - Job stacks keep `SlowTimeout` and cancellation.
 - `ssh.ClientConfig.Timeout` also bounds the SSH handshake, and the bastion hop.
 
+### Added
+- `Config.Resolve` overrides the address, SSH config and bastion per host (for example from
+  `~/.ssh/config`). Bastion connections are shared between hosts that use the same one.
+- `KnownHostsAcceptNew`: trust-on-first-use host key checking, like OpenSSH's
+  `StrictHostKeyChecking accept-new`.
+- `MaxLineLength`: long lines are split, so endless output without newlines can't exhaust memory.
+
 ### Other
 - Requires Go 1.26 and the current `golang.org/x/crypto`. `go-homedir` is no longer used.
 - New `sshtest` package: an in-process SSH server for hermetic tests. The test suite no longer

@@ -60,6 +60,23 @@ type Config struct {
 
 	// CancelSlow stops jobs as soon as they are flagged slow. Their error is ErrSlow.
 	CancelSlow bool
+
+	// Resolve, if set, is called for each host to override how it is reached, for example
+	// from ~/.ssh/config. If it returns an error, that host fails with it.
+	Resolve func(host string) (HostOptions, error)
+}
+
+// HostOptions overrides how one host is reached. Zero fields keep the Config's settings.
+type HostOptions struct {
+	// Addr is the address to dial instead of the host name, with or without a port.
+	Addr string
+	// SSHConfig is used instead of Config.SSHConfig.
+	SSHConfig *ssh.ClientConfig
+	// Bastion is a jump host to use instead of Config.BastionHost.
+	Bastion string
+	// BastionSSHConfig is used to connect to Bastion. Nil means Config.BastionSSHConfig if
+	// Bastion is Config.BastionHost, and the host's SSH config otherwise.
+	BastionSSHConfig *ssh.ClientConfig
 }
 
 // Validate reports every problem that would prevent c from running, joined into one error.

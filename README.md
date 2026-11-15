@@ -80,6 +80,10 @@ stop all work: cancelling closes every connection.
   runs it, and removes it again.
 - **Bastion host**: set `BastionHost` (and optionally `BastionSSHConfig`) to tunnel every
   connection through a jump host.
+- **Per-host settings**: `Resolve` can give each host its own address, user, keys and jump host,
+  for example from `~/.ssh/config`.
+- **Host keys**: `KnownHosts` checks `~/.ssh/known_hosts`; `KnownHostsAcceptNew` also records
+  keys of new hosts, like `StrictHostKeyChecking accept-new`.
 - **Concurrency**: `Workers` limits how many hosts are processed at once (default 32).
 - **Slow hosts**: `SlowTimeout` flags jobs that go quiet; `CancelSlow` stops them.
 - **Testing**: the `sshtest` package provides an in-process SSH server, like `httptest`.
