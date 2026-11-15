@@ -247,9 +247,12 @@ func TestOpenSSHValidate(t *testing.T) {
 }
 
 // TestOpenSSHReal runs the real OpenSSH client against the in-process server. It is skipped if
-// ssh isn't installed.
+// ssh isn't installed, unless MASSH_REQUIRE_SSH is set (as in CI).
 func TestOpenSSHReal(t *testing.T) {
 	if _, err := exec.LookPath("ssh"); err != nil {
+		if os.Getenv("MASSH_REQUIRE_SSH") != "" {
+			t.Fatal("ssh client not installed, and MASSH_REQUIRE_SSH is set")
+		}
 		t.Skip("ssh client not installed")
 	}
 	srv, bastion, stranger := sshtest.NewServer(t), sshtest.NewServer(t), sshtest.NewServer(t)

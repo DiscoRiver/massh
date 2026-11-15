@@ -22,3 +22,10 @@ jobs:
 
       - name: Test
         run: go test -race ./...
+
+      - name: Test against the real OpenSSH client
+        env:
+          MASSH_REQUIRE_SSH: "1"
+        run: |
+          ssh -V
+          go test -race -v -run 'TestOpenSSHReal' .
