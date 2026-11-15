@@ -1,125 +1,94 @@
 ![logo](./doc/logo.jpg)
 
-[![Go Test](https://github.com/DiscoRiver/massh/actions/workflows/go-test.yml/badge.svg)](https://github.com/DiscoRiver/massh/actions/workflows/go-test.yml) [![Go Report Card](https://goreportcard.com/badge/github.com/DiscoRiver/massh)](https://goreportcard.com/report/github.com/DiscoRiver/massh)  ![Go Report Card](https://img.shields.io/github/license/DiscoRiver/massh) [![Go Doc](https://img.shields.io/badge/GoDoc-Available-informational)](https://godoc.org/github.com/DiscoRiver/massh)
+[![Go Test](https://github.com/DiscoRiver/massh/actions/workflows/go-test.yml/badge.svg)](https://github.com/DiscoRiver/massh/actions/workflows/go-test.yml) [![Go Report Card](https://goreportcard.com/badge/github.com/DiscoRiver/massh)](https://goreportcard.com/report/github.com/DiscoRiver/massh)  ![License](https://img.shields.io/github/license/DiscoRiver/massh) [![Go Reference](https://pkg.go.dev/badge/github.com/discoriver/massh/v2.svg)](https://pkg.go.dev/github.com/discoriver/massh/v2)
 
 ## Description
-Go package for streaming Linux distributed shell commands via SSH. 
 
-What makes Massh special is it's ability to stream & process output concurrently. See `_examples/example_streaming` for some sample code.
+Go package for running shell commands on many Linux hosts at once over SSH.
 
-## Contribute
+What makes Massh special is its ability to stream and process output from every host concurrently,
+as it is produced.
 
-Have a question, idea, or something you think can be improved? Open an issue or PR and let's discuss it!
+```
+go get github.com/discoriver/massh/v2
+```
 
-## Example:
+v2 changed the API substantially; see the [changelog](CHANGELOG.md). v1 remains available at
+`github.com/discoriver/massh`.
+
+## Example
 
 ```go
-package main
+key, err := massh.PrivateKeyAuth("~/.ssh/id_ed25519", "")
+if err != nil {
+	log.Fatal(err)
+}
+hostKeys, err := massh.KnownHosts() // ~/.ssh/known_hosts
+if err != nil {
+	log.Fatal(err)
+}
 
-import (
-	"fmt"
-	"github.com/discoriver/massh"
-	"golang.org/x/crypto/ssh"
-)
+cfg := &massh.Config{
+	Hosts: []string{"web1.example.com", "web2.example.com:2222"},
+	Jobs:  []massh.Job{{Command: "uptime"}},
+	SSHConfig: &ssh.ClientConfig{
+		User:            "deploy",
+		Auth:            []ssh.AuthMethod{key},
+		HostKeyCallback: hostKeys,
+		Timeout:         10 * time.Second,
+	},
+}
 
-func main() {
-	// Create pointers to config & job
-	config := massh.NewConfig()
+results, err := cfg.Run(ctx)
+if err != nil {
+	log.Fatal(err)
+}
+for _, r := range results {
+	fmt.Printf("%s: %s (err=%v)\n", r.Host, r.Stdout, r.Err)
+}
+```
 
-	job := &massh.Job{
-		Command: "echo hello world",
-	}
+## Streaming output
 
-	config.SetHosts([]string{"192.168.1.118"})
+`Config.Stream` returns a channel of events, closed once every host has finished:
 
-	// Password auth
-	config.SetPasswordAuth("u01", "password")
-
-	// Key auth in same config. Auth will try all methods provided before failing.
-	err := config.SetPrivateKeyAuth("~/.ssh/id_rsa", "")
-	if err != nil {
-		panic(err)
-	}
-
-	config.SetJob(job)
-	config.SetWorkerPool(2)
-	config.SetSSHHostKeyCallback(ssh.InsecureIgnoreHostKey())
-
-	// Make sure config will run
-	config.CheckSanity()
-
-	res, err := config.Run()
-	if err != nil {
-		panic(err)
-	}
-
-	for i := range res {
-		fmt.Printf("%s:\n \t OUT: %s \t ERR: %v\n", res[i].Host, res[i].Output, res[i].Error)
+```go
+events, err := cfg.Stream(ctx)
+if err != nil {
+	log.Fatal(err)
+}
+for ev := range events {
+	switch ev.Kind {
+	case massh.EventStdout, massh.EventStderr:
+		fmt.Printf("%s: %s", ev.Host, ev.Data)
+	case massh.EventSlow:
+		fmt.Printf("%s: no output for a while\n", ev.Host)
+	case massh.EventDone:
+		fmt.Printf("%s: finished, err=%v\n", ev.Host, ev.Err)
 	}
 }
 ```
 
-More examples, including this one, are available in the examples directory.
+Each host and job gets zero or more output events (one per line), at most one `EventSlow`, and
+exactly one final `EventDone`. Keep reading until the channel is closed, or cancel the context to
+stop all work: cancelling closes every connection.
 
-## Usage:
-Get the massh package;
+## Other features
 
-```go get github.com/DiscoRiver/massh```
+- **Multiple jobs**: `Jobs` run in order on each host, over a single connection.
+- **Scripts**: `massh.NewScriptJob("./script.sh", "arg")` copies a local script to each host,
+  runs it, and removes it again.
+- **Bastion host**: set `BastionHost` (and optionally `BastionSSHConfig`) to tunnel every
+  connection through a jump host.
+- **Concurrency**: `Workers` limits how many hosts are processed at once (default 32).
+- **Slow hosts**: `SlowTimeout` flags jobs that go quiet; `CancelSlow` stops them.
+- **Testing**: the `sshtest` package provides an in-process SSH server, like `httptest`.
 
 ## Documentation
 
-* [GoDoc](https://godoc.org/github.com/DiscoRiver/massh)
+* [Go reference](https://pkg.go.dev/github.com/discoriver/massh/v2)
 
-## Other
+## Contribute
 
-### Bastion Host
-
-Specify a bastion host and config with `BastionHost` and `BastionHostSSHConfig` in your
-`massh.Config`. You may leave `BastionHostSSHConfig` as `nil`, in which case `SSHConfig` will be used instead. The process is
-automatic, and if `BastionHost` is not `nil`, it will be used. 
-
-### Streaming output
-
-There is an example of streaming output in the direcotry `_examples/example_streaming`, which contains one method of reading
-from the results channel, and processing the output.
-
-Running `config.Stream()` will populate the provided channel with results. Within this, there are two channels within each
-`Result`, `StdOutStream` and `StdErrStream`, which hold the `stdout` and `stderr` pipes respectively. Reading from these
-channels will give you the host's output/errors. 
-
-When a host has completed it's work and has exited, `Result.DoneChannel` will receive an empty struct. In my example, I use
-the following function to monitor this and report that a host has finished (see `_examples/example_streaming` for full program);
-
-```go
-func readStream(res Result, wg *sync.WaitGroup) error {
-	for {
-		select {
-		case d := <-res.StdOutStream:
-			fmt.Printf("%s: %s", res.Host, d)
-		case <-res.DoneChannel:
-			fmt.Printf("%s: Finished\n", res.Host)
-			wg.Done()
-		}
-	}
-}
-```
-
-Unlike with `Config.Run()`, which returns a slice of `Result`s when all hosts have exited, `Config.Stream()` requires some
-additional values to monitor host completion. For each individual host we have `Result.DoneChannel`, as explained above, but
-to detect when _all_ hosts have finished, we have the variable `NumberOfStreamingHostsCompleted`, which will equal the length 
-of `Config.Hosts` once everything has completed. Here is an example of what I'm using in `_examples/example_streaming`;
-
-```go
-if NumberOfStreamingHostsCompleted == len(cfg.Hosts) {
-		// We want to wait for all goroutines to complete before we declare that the work is finished, as
-		// it's possible for us to execute this code before we've finished reading/processing all host output
-		wg.Wait()
-
-		fmt.Println("Everything returned.")
-		return
-}
-```
-
-Right now, the concurrency model used to read from the results channel is the responsibility of those using this package. An example of
-how this might be achieved can be found in the https://github.com/DiscoRiver/omnivore/tree/main/internal/ossh package, which is currently in development.
-
+Have a question, idea, or something you think can be improved? Open an issue or PR and let's
+discuss it!
